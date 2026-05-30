@@ -83,4 +83,15 @@ describe.skipIf(!ready)('Lighter — trading testnet réel (compte main)', () =>
     const after = await dex.perp().getOpenOrders({ name: 'BTC' });
     console.log('ordres ouverts BTC après annulation:', after.length);
   });
+
+  it('kill-switch : arme puis désarme le dead-man-switch (ScheduledCancelAll)', async () => {
+    const armed = (await dex.account().armCancelAll(600_000)) as { txHash: string }; // 10 min
+    console.log('armCancelAll:', armed.txHash.slice(0, 16));
+    expect(armed.txHash.length).toBeGreaterThan(10);
+
+    await new Promise((r) => setTimeout(r, 1500));
+    const disarmed = (await dex.account().disarm()) as { txHash: string };
+    console.log('disarm:', disarmed.txHash.slice(0, 16));
+    expect(disarmed.txHash.length).toBeGreaterThan(10);
+  });
 });

@@ -71,3 +71,13 @@ export const ROUTE_TYPE = {
   perps: 0,
   spot: 1,
 } as const;
+
+/**
+ * Mode de `CancelAllOrders` : immédiat, programmé (dead-man's switch armé à une échéance), ou
+ * désarmement d'un cancel programmé. (≠ TIF d'un ordre — c'est l'enum natif du tx cancel-all.)
+ */
+export const CANCEL_ALL_MODE = {
+  immediate: 0,
+  scheduled: 1,
+  abort: 2,
+} as const;

@@ -21,7 +21,7 @@ import type { Unsubscribe } from '../common/ws';
 import { updateAccountAssetConfig, updateAccountConfig } from '../rest/account-config';
 import { getActiveOrders, getInactiveOrders } from '../rest/account-orders';
 import { getAuthToken } from '../rest/auth';
-import { cancelAllOrders } from '../rest/cancel-all-orders';
+import { cancelAllOrders, disarmCancelAll, scheduleCancelAll } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
 import { createSubAccount } from '../rest/create-sub-account';
 import { modifyOrder } from '../rest/edit-order';
@@ -53,6 +53,7 @@ import type {
   EditOrderInput,
   FundingQuery,
   IAccount,
+  IDeadManSwitch,
   IIsolatedMargin,
   IMarginMode,
   IMarketData,
@@ -485,8 +486,8 @@ class LighterMarket
   }
 }
 
-/** Scope **compte transverse** : soldes, sous-comptes, retrait. */
-class LighterAccount implements IAccount, ISubAccounts {
+/** Scope **compte transverse** : soldes, sous-comptes, retrait, kill-switch. */
+class LighterAccount implements IAccount, ISubAccounts, IDeadManSwitch {
   constructor(
     private readonly client: LighterClient,
     private readonly label: string | undefined,
@@ -519,6 +520,14 @@ class LighterAccount implements IAccount, ISubAccounts {
   }
   public withdraw(input: WithdrawInput): Promise<unknown> {
     return withdraw(this.client, this.signed(), { amount: scaleToInt(input.amount, 6) });
+  }
+
+  // ── IDeadManSwitch (Lighter : ScheduledCancelAll, échéance = timestamp absolu ms) ──
+  public armCancelAll(afterMs: number): Promise<unknown> {
+    return scheduleCancelAll(this.client, this.signed(), Date.now() + afterMs);
+  }
+  public disarm(): Promise<unknown> {
+    return disarmCancelAll(this.client, this.signed());
   }
 }
 

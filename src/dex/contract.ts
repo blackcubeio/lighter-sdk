@@ -169,6 +169,20 @@ export interface ISubAccounts {
   getSubAccounts(): Promise<SubAccount[]>;
 }
 
+/**
+ * **Kill-switch / dead-man's switch serveur** : annule TOUS les ordres après `afterMs` ms de
+ * silence, à rafraîchir périodiquement (heartbeat). Capacité **non universelle** — seules les
+ * venues qui l'offrent côté serveur l'implémentent (HL `scheduleCancel`, Aster `countdownCancelAll`,
+ * Lighter `ScheduledCancelAll`). **Pacifica n'a pas de DMS serveur → ne l'implémente pas** (le bot
+ * doit alors faire tourner un watchdog externe). Jamais simulé côté client (mourrait avec le process).
+ */
+export interface IDeadManSwitch {
+  /** Arme/rafraîchit l'annulation auto de tous les ordres après `afterMs` ms sans nouvel appel. */
+  armCancelAll(afterMs: number): Promise<unknown>;
+  /** Désarme le kill-switch. */
+  disarm(): Promise<unknown>;
+}
+
 // ── SYSTÈME (retourné par system()) : connectivité, ni compte ni marché ───────
 
 /** Connectivité / horloge serveur (les 3 DEX). */
