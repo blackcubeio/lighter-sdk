@@ -43,6 +43,14 @@ interface WasmFns {
   SignWithdraw: WasmFn;
   SignTransfer: WasmFn;
   SignCreateSubAccount: WasmFn;
+  SignCreatePublicPool: WasmFn;
+  SignUpdatePublicPool: WasmFn;
+  SignMintShares: WasmFn;
+  SignBurnShares: WasmFn;
+  SignStakeAssets: WasmFn;
+  SignUnstakeAssets: WasmFn;
+  SignUpdateAccountConfig: WasmFn;
+  SignUpdateAccountAssetConfig: WasmFn;
 }
 
 const GLOBAL_NAMES: (keyof WasmFns)[] = [
@@ -58,6 +66,14 @@ const GLOBAL_NAMES: (keyof WasmFns)[] = [
   'SignWithdraw',
   'SignTransfer',
   'SignCreateSubAccount',
+  'SignCreatePublicPool',
+  'SignUpdatePublicPool',
+  'SignMintShares',
+  'SignBurnShares',
+  'SignStakeAssets',
+  'SignUnstakeAssets',
+  'SignUpdateAccountConfig',
+  'SignUpdateAccountAssetConfig',
 ];
 
 interface GoRuntime {
@@ -351,6 +367,170 @@ export class WasmInstance {
     return toTx(
       this.fns.SignCreateSubAccount(0, a.nonce, a.apiKeyIndex, a.accountIndex),
       'SignCreateSubAccount',
+    );
+  }
+
+  signCreatePublicPool(a: {
+    operatorFee: number;
+    initialTotalShares: number;
+    minOperatorShareRate: number;
+    nonce: number;
+    apiKeyIndex: number;
+    accountIndex: number;
+  }): WasmTx {
+    return toTx(
+      this.fns.SignCreatePublicPool(
+        a.operatorFee,
+        a.initialTotalShares,
+        a.minOperatorShareRate,
+        0,
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignCreatePublicPool',
+    );
+  }
+
+  signUpdatePublicPool(a: {
+    publicPoolIndex: number;
+    status: number;
+    operatorFee: number;
+    minOperatorShareRate: number;
+    nonce: number;
+    apiKeyIndex: number;
+    accountIndex: number;
+  }): WasmTx {
+    return toTx(
+      this.fns.SignUpdatePublicPool(
+        a.publicPoolIndex,
+        a.status,
+        a.operatorFee,
+        a.minOperatorShareRate,
+        0,
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignUpdatePublicPool',
+    );
+  }
+
+  signMintShares(a: {
+    publicPoolIndex: number;
+    shareAmount: number;
+    nonce: number;
+    apiKeyIndex: number;
+    accountIndex: number;
+  }): WasmTx {
+    return toTx(
+      this.fns.SignMintShares(
+        a.publicPoolIndex,
+        a.shareAmount,
+        0,
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignMintShares',
+    );
+  }
+
+  signBurnShares(a: {
+    publicPoolIndex: number;
+    shareAmount: number;
+    nonce: number;
+    apiKeyIndex: number;
+    accountIndex: number;
+  }): WasmTx {
+    return toTx(
+      this.fns.SignBurnShares(
+        a.publicPoolIndex,
+        a.shareAmount,
+        0,
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignBurnShares',
+    );
+  }
+
+  signStakeAssets(a: {
+    stakingPoolIndex: number;
+    shareAmount: number;
+    nonce: number;
+    apiKeyIndex: number;
+    accountIndex: number;
+  }): WasmTx {
+    return toTx(
+      this.fns.SignStakeAssets(
+        a.stakingPoolIndex,
+        a.shareAmount,
+        0,
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignStakeAssets',
+    );
+  }
+
+  signUnstakeAssets(a: {
+    stakingPoolIndex: number;
+    shareAmount: number;
+    nonce: number;
+    apiKeyIndex: number;
+    accountIndex: number;
+  }): WasmTx {
+    return toTx(
+      this.fns.SignUnstakeAssets(
+        a.stakingPoolIndex,
+        a.shareAmount,
+        0,
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignUnstakeAssets',
+    );
+  }
+
+  signUpdateAccountConfig(a: {
+    accountTradingMode: number;
+    nonce: number;
+    apiKeyIndex: number;
+    accountIndex: number;
+  }): WasmTx {
+    return toTx(
+      this.fns.SignUpdateAccountConfig(
+        a.accountTradingMode,
+        0,
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignUpdateAccountConfig',
+    );
+  }
+
+  signUpdateAccountAssetConfig(a: {
+    assetIndex: number;
+    assetMarginMode: number;
+    nonce: number;
+    apiKeyIndex: number;
+    accountIndex: number;
+  }): WasmTx {
+    return toTx(
+      this.fns.SignUpdateAccountAssetConfig(
+        a.assetIndex,
+        a.assetMarginMode,
+        0,
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignUpdateAccountAssetConfig',
     );
   }
 }

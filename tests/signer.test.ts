@@ -40,6 +40,18 @@ describe('Signer WASM (local, aucun envoi)', () => {
     expect(tx.txType).toBe(14);
     expect(tx.txInfo.length).toBeGreaterThan(10);
     expect(tx.txHash.length).toBeGreaterThan(10);
+
+    // Surplus L2 (pools) : la signature est câblée et la fonction WASM est bien capturée.
+    const pool = wasm.signCreatePublicPool({
+      operatorFee: 100,
+      initialTotalShares: 1000,
+      minOperatorShareRate: 100,
+      nonce: 1,
+      apiKeyIndex: 2,
+      accountIndex: 1,
+    });
+    expect(pool.txType).toBe(10);
+    expect(pool.txInfo.length).toBeGreaterThan(10);
   });
 
   it('deux instances (mainnet + testnet) coexistent et signent indépendamment', async () => {

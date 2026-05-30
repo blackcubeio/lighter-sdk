@@ -37,3 +37,35 @@ export interface LighterTransferInput {
 export interface ILighterTransfers {
   transfer(input: LighterTransferInput): Promise<TxResult>;
 }
+
+/** Public pools (LP) Lighter : création, mise à jour, émission/destruction de parts. */
+export interface ILighterPools {
+  createPublicPool(params: {
+    operatorFee: number;
+    initialTotalShares: number;
+    minOperatorShareRate: number;
+  }): Promise<TxResult>;
+  updatePublicPool(params: {
+    publicPoolIndex: number;
+    status: number;
+    operatorFee: number;
+    minOperatorShareRate: number;
+  }): Promise<TxResult>;
+  mintShares(params: { publicPoolIndex: number; shareAmount: number }): Promise<TxResult>;
+  burnShares(params: { publicPoolIndex: number; shareAmount: number }): Promise<TxResult>;
+}
+
+/** Staking d'actifs Lighter. */
+export interface ILighterStaking {
+  stakeAssets(params: { stakingPoolIndex: number; shareAmount: number }): Promise<TxResult>;
+  unstakeAssets(params: { stakingPoolIndex: number; shareAmount: number }): Promise<TxResult>;
+}
+
+/** Configuration de compte Lighter : mode de trading, activation d'un actif comme marge. */
+export interface ILighterAccountConfig {
+  updateAccountConfig(params: { accountTradingMode: number }): Promise<TxResult>;
+  updateAccountAssetConfig(params: {
+    assetIndex: number;
+    assetMarginMode: number;
+  }): Promise<TxResult>;
+}

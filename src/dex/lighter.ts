@@ -18,6 +18,7 @@ import type {
 } from '../common/types';
 import { scaleToInt } from '../common/utils';
 import type { Unsubscribe } from '../common/ws';
+import { updateAccountAssetConfig, updateAccountConfig } from '../rest/account-config';
 import { getActiveOrders, getInactiveOrders } from '../rest/account-orders';
 import { getAuthToken } from '../rest/auth';
 import { cancelAllOrders } from '../rest/cancel-all-orders';
@@ -36,7 +37,9 @@ import { getSubAccounts } from '../rest/get-sub-accounts';
 import { getTrades } from '../rest/get-trades';
 import { getUserTrades } from '../rest/get-user-trades';
 import { placeOrder } from '../rest/place-order';
+import { burnShares, createPublicPool, mintShares, updatePublicPool } from '../rest/pools';
 import type { SendTxResult } from '../rest/send-tx';
+import { stakeAssets, unstakeAssets } from '../rest/staking';
 import { transfer } from '../rest/transfer';
 import { updateLeverage } from '../rest/update-leverage';
 import { updateMargin } from '../rest/update-margin';
@@ -72,7 +75,10 @@ import type {
   WithdrawInput,
 } from './contract';
 import type {
+  ILighterAccountConfig,
   ILighterApiKeys,
+  ILighterPools,
+  ILighterStaking,
   ILighterSubAccounts,
   ILighterTransfers,
   LighterTransferInput,
@@ -713,11 +719,51 @@ class LighterTransfers extends LighterScope implements ILighterTransfers {
   }
 }
 
+/** Scope **pools** : public pools (LP) — {@link ILighterPools}. */
+class LighterPools extends LighterScope implements ILighterPools {
+  public createPublicPool(params: Parameters<typeof createPublicPool>[2]): Promise<SendTxResult> {
+    return createPublicPool(this.client, this.signed(), params);
+  }
+  public updatePublicPool(params: Parameters<typeof updatePublicPool>[2]): Promise<SendTxResult> {
+    return updatePublicPool(this.client, this.signed(), params);
+  }
+  public mintShares(params: Parameters<typeof mintShares>[2]): Promise<SendTxResult> {
+    return mintShares(this.client, this.signed(), params);
+  }
+  public burnShares(params: Parameters<typeof burnShares>[2]): Promise<SendTxResult> {
+    return burnShares(this.client, this.signed(), params);
+  }
+}
+
+/** Scope **staking** — {@link ILighterStaking}. */
+class LighterStaking extends LighterScope implements ILighterStaking {
+  public stakeAssets(params: Parameters<typeof stakeAssets>[2]): Promise<SendTxResult> {
+    return stakeAssets(this.client, this.signed(), params);
+  }
+  public unstakeAssets(params: Parameters<typeof unstakeAssets>[2]): Promise<SendTxResult> {
+    return unstakeAssets(this.client, this.signed(), params);
+  }
+}
+
+/** Scope **accountConfig** : mode de trading + activation d'un actif comme marge — {@link ILighterAccountConfig}. */
+class LighterAccountConfig extends LighterScope implements ILighterAccountConfig {
+  public updateAccountConfig(
+    params: Parameters<typeof updateAccountConfig>[2],
+  ): Promise<SendTxResult> {
+    return updateAccountConfig(this.client, this.signed(), params);
+  }
+  public updateAccountAssetConfig(
+    params: Parameters<typeof updateAccountAssetConfig>[2],
+  ): Promise<SendTxResult> {
+    return updateAccountAssetConfig(this.client, this.signed(), params);
+  }
+}
+
 /**
  * Façade **Lighter** : `const dex = new Lighter({ deskA: signer }, { default: 'deskA' })`, puis
  * `dex.perp(label?)` / `dex.spot(label?)` (marché perp / spot), `dex.account(label?)` (compte),
  * `dex.ws(label?)` / `dex.wsSpot(label?)` (temps réel). Scopes spécifiques : `apiKeys()`,
- * `subAccounts()`, `transfers()`.
+ * `subAccounts()`, `transfers()`, `pools()`, `staking()`, `accountConfig()`.
  *
  * Chaque instance détient son propre {@link LighterClient} (config isolée). Le **signer WASM**
  * est instancié **une fois par réseau** (lazy au 1er appel signé), donc mainnet et testnet
@@ -794,6 +840,21 @@ export class Lighter {
   /** Scope **transfers** (transfert de collatéral entre comptes). */
   public transfers(label?: string): LighterTransfers {
     return new LighterTransfers(this.client, this.resolve(label));
+  }
+
+  /** Scope **pools** (public pools / LP). */
+  public pools(label?: string): LighterPools {
+    return new LighterPools(this.client, this.resolve(label));
+  }
+
+  /** Scope **staking** (stake / unstake). */
+  public staking(label?: string): LighterStaking {
+    return new LighterStaking(this.client, this.resolve(label));
+  }
+
+  /** Scope **accountConfig** (mode de trading, activation d'un actif comme marge). */
+  public accountConfig(label?: string): LighterAccountConfig {
+    return new LighterAccountConfig(this.client, this.resolve(label));
   }
 
   /** Un client WS unifié par label (réutilisé pour partager le ref-counting du socket). */

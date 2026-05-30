@@ -54,6 +54,13 @@ réseau** (lazy), donc des signers mainnet et testnet coexistent isolés (cf.
 | `apiKeys(label?)` | `generateApiKey`, `getNextNonce`, `getAuthToken` (spécifique Lighter) |
 | `subAccounts(label?)` | `createSubAccount` (spécifique Lighter) |
 | `transfers(label?)` | `transfer` de collatéral entre comptes (spécifique Lighter) |
+| `pools(label?)` | public pools / LP : `createPublicPool`, `updatePublicPool`, `mintShares`, `burnShares` |
+| `staking(label?)` | `stakeAssets`, `unstakeAssets` |
+| `accountConfig(label?)` | `updateAccountConfig` (mode de trading), `updateAccountAssetConfig` (actif comme marge) |
+
+> Non surfacés : `changePubKey` et `approveIntegrator` exigent une **signature L1 EVM** du
+> `messageToSign` que le `.wasm` vendoré ne permet pas de réinjecter dans la transaction — à
+> implémenter avec le flux L1 dédié (et un test prudent : `changePubKey` fait tourner la clé).
 
 Lighter expose des marchés **perp et spot** (`market_type`) → scopes `perp()`/`spot()` (même
 classe paramétrée par `kind`, comme Aster). Pas de scope `system()` : aucun endpoint ping/horloge
