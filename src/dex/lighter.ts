@@ -76,13 +76,13 @@ import type {
   WithdrawInput,
 } from './contract';
 import type {
-  ILighterAccountConfig,
-  ILighterApiKeys,
-  ILighterPools,
-  ILighterStaking,
-  ILighterSubAccounts,
-  ILighterTransfers,
-  LighterTransferInput,
+  IAccountConfig,
+  IApiKeys,
+  IPools,
+  IStaking,
+  ISubAccountsAdmin,
+  ITransfers,
+  Transfer,
 } from './lighter-contract';
 
 /** Métadonnée de marché résolue (pour le mapping `name → market_id` + scaling décimal). */
@@ -689,7 +689,7 @@ class LighterScope {
 }
 
 /** Scope **apiKeys** : génération de clés, nonce, token d'auth — {@link ILighterApiKeys}. */
-class LighterApiKeys extends LighterScope implements ILighterApiKeys {
+class LighterApiKeys extends LighterScope implements IApiKeys {
   private signer(): Signer {
     const signer = this.client.signers[this.signed()];
     if (signer === undefined) {
@@ -697,29 +697,29 @@ class LighterApiKeys extends LighterScope implements ILighterApiKeys {
     }
     return signer;
   }
-  public async generateApiKey(): Promise<{ privateKey: string; publicKey: string }> {
+  public async generate(): Promise<{ privateKey: string; publicKey: string }> {
     const wasm = await getWasmInstance(this.client.restUrls[this.signer().network]);
     return wasm.generateApiKey();
   }
-  public getNextNonce(): Promise<number> {
+  public nextNonce(): Promise<number> {
     const signer = this.signer();
     return getNextNonce(this.client, signer.accountIndex, signer.apiKeyIndex, this.label);
   }
-  public getAuthToken(deadlineSeconds?: number): Promise<string> {
+  public authToken(deadlineSeconds?: number): Promise<string> {
     return getAuthToken(this.client, this.signed(), deadlineSeconds).then((r) => r.auth);
   }
 }
 
-/** Scope **subAccounts** : création (la liste est dans `account()`) — {@link ILighterSubAccounts}. */
-class LighterSubAccounts extends LighterScope implements ILighterSubAccounts {
-  public createSubAccount(): Promise<SendTxResult> {
+/** Scope **subAccounts** : création (la liste est dans `account()`) — {@link ISubAccountsAdmin}. */
+class LighterSubAccounts extends LighterScope implements ISubAccountsAdmin {
+  public create(): Promise<SendTxResult> {
     return createSubAccount(this.client, this.signed());
   }
 }
 
-/** Scope **transfers** : transfert de collatéral entre comptes — {@link ILighterTransfers}. */
-class LighterTransfers extends LighterScope implements ILighterTransfers {
-  public transfer(input: LighterTransferInput): Promise<SendTxResult> {
+/** Scope **transfers** : transfert de collatéral entre comptes — {@link ITransfers}. */
+class LighterTransfers extends LighterScope implements ITransfers {
+  public transfer(input: Transfer): Promise<SendTxResult> {
     return transfer(this.client, this.signed(), {
       toAccountIndex: input.toAccountIndex,
       amount: scaleToInt(input.amount, 6),
@@ -728,40 +728,38 @@ class LighterTransfers extends LighterScope implements ILighterTransfers {
   }
 }
 
-/** Scope **pools** : public pools (LP) — {@link ILighterPools}. */
-class LighterPools extends LighterScope implements ILighterPools {
-  public createPublicPool(params: Parameters<typeof createPublicPool>[2]): Promise<SendTxResult> {
+/** Scope **pools** : public pools (LP) — {@link IPools}. */
+class LighterPools extends LighterScope implements IPools {
+  public create(params: Parameters<typeof createPublicPool>[2]): Promise<SendTxResult> {
     return createPublicPool(this.client, this.signed(), params);
   }
-  public updatePublicPool(params: Parameters<typeof updatePublicPool>[2]): Promise<SendTxResult> {
+  public update(params: Parameters<typeof updatePublicPool>[2]): Promise<SendTxResult> {
     return updatePublicPool(this.client, this.signed(), params);
   }
-  public mintShares(params: Parameters<typeof mintShares>[2]): Promise<SendTxResult> {
+  public mint(params: Parameters<typeof mintShares>[2]): Promise<SendTxResult> {
     return mintShares(this.client, this.signed(), params);
   }
-  public burnShares(params: Parameters<typeof burnShares>[2]): Promise<SendTxResult> {
+  public burn(params: Parameters<typeof burnShares>[2]): Promise<SendTxResult> {
     return burnShares(this.client, this.signed(), params);
   }
 }
 
-/** Scope **staking** — {@link ILighterStaking}. */
-class LighterStaking extends LighterScope implements ILighterStaking {
-  public stakeAssets(params: Parameters<typeof stakeAssets>[2]): Promise<SendTxResult> {
+/** Scope **staking** — {@link IStaking}. */
+class LighterStaking extends LighterScope implements IStaking {
+  public stake(params: Parameters<typeof stakeAssets>[2]): Promise<SendTxResult> {
     return stakeAssets(this.client, this.signed(), params);
   }
-  public unstakeAssets(params: Parameters<typeof unstakeAssets>[2]): Promise<SendTxResult> {
+  public unstake(params: Parameters<typeof unstakeAssets>[2]): Promise<SendTxResult> {
     return unstakeAssets(this.client, this.signed(), params);
   }
 }
 
-/** Scope **accountConfig** : mode de trading + activation d'un actif comme marge — {@link ILighterAccountConfig}. */
-class LighterAccountConfig extends LighterScope implements ILighterAccountConfig {
-  public updateAccountConfig(
-    params: Parameters<typeof updateAccountConfig>[2],
-  ): Promise<SendTxResult> {
+/** Scope **accountConfig** : mode de trading + activation d'un actif comme marge — {@link IAccountConfig}. */
+class LighterAccountConfig extends LighterScope implements IAccountConfig {
+  public update(params: Parameters<typeof updateAccountConfig>[2]): Promise<SendTxResult> {
     return updateAccountConfig(this.client, this.signed(), params);
   }
-  public updateAccountAssetConfig(
+  public updateAsset(
     params: Parameters<typeof updateAccountAssetConfig>[2],
   ): Promise<SendTxResult> {
     return updateAccountAssetConfig(this.client, this.signed(), params);
@@ -834,36 +832,30 @@ export class Lighter {
     );
   }
 
-  // ── Scopes spécifiques Lighter (interfaces complémentaires, hors contrat commun) ──
+  // ── Surplus spécifique Lighter (namespace `native`, convention partagée par les 4 SDK) ──
 
-  /** Scope **apiKeys** (génération de clés, nonce, token d'auth). */
-  public apiKeys(label?: string): LighterApiKeys {
-    return new LighterApiKeys(this.client, this.resolve(label));
-  }
-
-  /** Scope **subAccounts** (création ; la liste est dans `account()`). */
-  public subAccounts(label?: string): LighterSubAccounts {
-    return new LighterSubAccounts(this.client, this.resolve(label));
-  }
-
-  /** Scope **transfers** (transfert de collatéral entre comptes). */
-  public transfers(label?: string): LighterTransfers {
-    return new LighterTransfers(this.client, this.resolve(label));
-  }
-
-  /** Scope **pools** (public pools / LP). */
-  public pools(label?: string): LighterPools {
-    return new LighterPools(this.client, this.resolve(label));
-  }
-
-  /** Scope **staking** (stake / unstake). */
-  public staking(label?: string): LighterStaking {
-    return new LighterStaking(this.client, this.resolve(label));
-  }
-
-  /** Scope **accountConfig** (mode de trading, activation d'un actif comme marge). */
-  public accountConfig(label?: string): LighterAccountConfig {
-    return new LighterAccountConfig(this.client, this.resolve(label));
+  /**
+   * Capacités **spécifiques à Lighter**, hors contrat unifié. Accès uniforme à tous les SDK :
+   * `dex.native.<capacité>(label?)`. Noms d'interfaces (`IApiKeys`, `ITransfers`, `IPools`…) et
+   * verbes **alignés** entre SDK quand le geste existe ailleurs ; seuls les types diffèrent.
+   */
+  public get native() {
+    const c = this.client;
+    const r = (label?: string) => this.resolve(label);
+    return {
+      /** Clés API + helpers de signature (génération, nonce, token d'auth) — `IApiKeys`. */
+      apiKeys: (label?: string) => new LighterApiKeys(c, r(label)),
+      /** Création de sous-comptes — `ISubAccountsAdmin`. */
+      subAccounts: (label?: string) => new LighterSubAccounts(c, r(label)),
+      /** Transfert de collatéral entre comptes — `ITransfers`. */
+      transfers: (label?: string) => new LighterTransfers(c, r(label)),
+      /** Public pools (LP) — `IPools`. */
+      pools: (label?: string) => new LighterPools(c, r(label)),
+      /** Stake / unstake d'actifs — `IStaking`. */
+      staking: (label?: string) => new LighterStaking(c, r(label)),
+      /** Mode de trading + activation d'un actif comme marge — `IAccountConfig`. */
+      accountConfig: (label?: string) => new LighterAccountConfig(c, r(label)),
+    };
   }
 
   /** Un client WS unifié par label (réutilisé pour partager le ref-counting du socket). */

@@ -5,15 +5,17 @@ import { Lighter } from '../src/dex/lighter';
 const dex = new Lighter();
 
 describe('Lighter — façade & lectures publiques (mainnet réel)', () => {
-  it('expose les scopes attendus (perp/spot/ws/wsSpot/account/apiKeys/subAccounts/transfers, pas de system)', () => {
+  it('expose les scopes unifiés + le namespace native (apiKeys/subAccounts/transfers/pools/staking/accountConfig), pas de system', () => {
     expect(typeof dex.perp).toBe('function');
     expect(typeof dex.spot).toBe('function');
     expect(typeof dex.account).toBe('function');
     expect(typeof dex.ws).toBe('function');
     expect(typeof dex.wsSpot).toBe('function');
-    expect(typeof dex.apiKeys).toBe('function');
-    expect(typeof dex.subAccounts).toBe('function');
-    expect(typeof dex.transfers).toBe('function');
+    for (const c of ['apiKeys', 'subAccounts', 'transfers', 'pools', 'staking', 'accountConfig']) {
+      expect(typeof (dex.native as Record<string, unknown>)[c]).toBe('function');
+    }
+    // Les anciens scopes top-level ont migré sous `native` (plus de top-level).
+    expect((dex as unknown as Record<string, unknown>).apiKeys).toBeUndefined();
     // Lighter n'a pas d'endpoint système (ping/horloge) → pas de scope system().
     expect((dex as unknown as Record<string, unknown>).system).toBeUndefined();
   });
