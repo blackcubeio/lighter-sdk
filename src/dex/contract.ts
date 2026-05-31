@@ -28,8 +28,8 @@ import type { Unsubscribe } from '../common/ws';
 export interface CandlesParams {
   name: string;
   interval: string;
-  startTime?: number;
-  endTime?: number;
+  startTime?: string; // datetime UTC "YYYY-MM-DD HH:MM:SS" (C7)
+  endTime?: string; // datetime UTC "YYYY-MM-DD HH:MM:SS" (C7)
   limit?: number;
 }
 export interface OrderBookParams {
@@ -42,8 +42,8 @@ export interface TradesParams {
 }
 export interface FundingParams {
   name: string;
-  startTime?: number;
-  endTime?: number;
+  startTime?: string; // datetime UTC "YYYY-MM-DD HH:MM:SS" (C7)
+  endTime?: string; // datetime UTC "YYYY-MM-DD HH:MM:SS" (C7)
   limit?: number;
 }
 export interface SymbolParams {

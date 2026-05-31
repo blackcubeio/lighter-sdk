@@ -59,10 +59,16 @@ describe('Lighter — façade & lectures publiques (mainnet réel)', () => {
   });
 
   it('perp().getFundingHistory({ name: BTC })', async () => {
+    const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
     const now = Date.now();
     const funding = await dex
       .perp()
-      .getFundingHistory({ name: 'BTC', startTime: now - 6 * 3600_000, endTime: now, limit: 3 });
+      .getFundingHistory({
+        name: 'BTC',
+        startTime: fmt(now - 6 * 3600_000),
+        endTime: fmt(now),
+        limit: 3,
+      });
     expect(funding.length).toBeGreaterThan(0);
     expect(funding[0]?.name).toBe('BTC');
   });

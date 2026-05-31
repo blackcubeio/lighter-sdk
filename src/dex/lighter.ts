@@ -16,7 +16,7 @@ import type {
   Trade,
   UserTrade,
 } from '../common/types';
-import { scaleToInt } from '../common/utils';
+import { dateToMs, scaleToInt } from '../common/utils';
 import type { Unsubscribe } from '../common/ws';
 import { updateAccountAssetConfig, updateAccountConfig } from '../rest/account-config';
 import { getActiveOrders, getInactiveOrders } from '../rest/account-orders';
@@ -249,8 +249,8 @@ class LighterMarket
         marketId: meta.marketId,
         name: query.name,
         interval: query.interval,
-        startTime: query.startTime,
-        endTime: query.endTime,
+        startTime: query.startTime === undefined ? undefined : dateToMs(query.startTime),
+        endTime: query.endTime === undefined ? undefined : dateToMs(query.endTime),
         limit: query.limit,
         kind: this.kind,
       },
@@ -275,8 +275,8 @@ class LighterMarket
       {
         marketId: meta.marketId,
         name: query.name,
-        startTime: query.startTime,
-        endTime: query.endTime,
+        startTime: query.startTime === undefined ? undefined : dateToMs(query.startTime),
+        endTime: query.endTime === undefined ? undefined : dateToMs(query.endTime),
         limit: query.limit,
       },
       this.label,
