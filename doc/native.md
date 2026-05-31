@@ -122,3 +122,12 @@ await dex.native.staking().unstake({ stakingPoolIndex: 0, shareAmount: 500 });
 await dex.native.accountConfig().update({ accountTradingMode: 1 });
 await dex.native.accountConfig().updateAsset({ assetIndex: 0, assetMarginMode: 1 });
 ```
+
+---
+
+> **Validation** (`tests/native.testnet.test.ts`, testnet réel) :
+> - **testé** : `apiKeys` (generate/nextNonce/authToken), `advancedOrders.placeBatch` (chemin TX 28
+>   signé — WASM officiel), `marketData.fundingRates` (public), `account` (liquidations/positionFunding/pnl,
+>   authentifiés).
+> - **préparées + documentées, testées manuellement** (écritures à effet de bord / création de ressource) :
+>   `subAccounts.create`, `transfers.transfer`, `pools.*`, `staking.*`, `accountConfig.*`.

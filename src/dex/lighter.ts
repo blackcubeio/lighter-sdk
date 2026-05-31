@@ -865,8 +865,9 @@ class LighterAccountExtra extends LighterScope implements IAccountExtra {
 /**
  * Façade **Lighter** : `const dex = new Lighter({ deskA: signer }, { default: 'deskA' })`, puis
  * `dex.perp(label?)` / `dex.spot(label?)` (marché perp / spot), `dex.account(label?)` (compte),
- * `dex.ws(label?)` / `dex.wsSpot(label?)` (temps réel). Scopes spécifiques : `apiKeys()`,
- * `subAccounts()`, `transfers()`, `pools()`, `staking()`, `accountConfig()`.
+ * `dex.ws(label?)` / `dex.wsSpot(label?)` (temps réel). Surplus spécifique via `dex.native.<cap>()` :
+ * `apiKeys`, `subAccounts`, `transfers`, `pools`, `staking`, `accountConfig`, `advancedOrders`,
+ * `marketData`, `account`.
  *
  * Chaque instance détient son propre {@link LighterClient} (config isolée). Le **signer WASM**
  * est instancié **une fois par réseau** (lazy au 1er appel signé), donc mainnet et testnet
