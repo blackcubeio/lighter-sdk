@@ -1,4 +1,5 @@
 import type { TxResult } from '../common/types';
+import type { PlaceOrderInput } from './contract';
 
 /**
  * Interfaces **complémentaires** Lighter : surface spécifique, hors contrat commun aux DEX.
@@ -24,6 +25,28 @@ export interface IApiKeys {
 /** Création de sous-comptes (la **liste** est dans `account().getSubAccounts()`). Verbe aligné `create`. */
 export interface ISubAccountsAdmin {
   create(): Promise<TxResult>;
+}
+
+/** Un leg d'un lot d'ordres groupés (valeurs **humaines** ; la façade résout marché + scaling). */
+export interface GroupedOrder {
+  /** Paire (ex. `BTC`). */
+  name: string;
+  side: 'buy' | 'sell';
+  type: PlaceOrderInput['type'];
+  /** Taille (chaîne décimale). */
+  size: string;
+  /** Prix limite / borne de protection (requis). */
+  price: string;
+  tif?: 'gtc' | 'ioc' | 'alo';
+  reduceOnly?: boolean;
+  triggerPrice?: string;
+  clientId?: string;
+}
+
+/** Ordres groupés (TX 28, OCO/bracket). Verbe aligné `placeBatch` (HL/Aster/Pacifica). */
+export interface IAdvancedOrders {
+  /** `groupingType` : 0 = aucun, autres valeurs = OCO/bracket selon le protocole. */
+  placeBatch(orders: GroupedOrder[], groupingType?: number): Promise<TxResult>;
 }
 
 /** Entrée d'un transfert de collatéral entre comptes. */

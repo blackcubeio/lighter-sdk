@@ -35,6 +35,7 @@ interface WasmFns {
   CreateClient: WasmFn;
   CreateAuthToken: WasmFn;
   SignCreateOrder: WasmFn;
+  SignCreateGroupedOrders: WasmFn;
   SignCancelOrder: WasmFn;
   SignCancelAllOrders: WasmFn;
   SignModifyOrder: WasmFn;
@@ -58,6 +59,7 @@ const GLOBAL_NAMES: (keyof WasmFns)[] = [
   'CreateClient',
   'CreateAuthToken',
   'SignCreateOrder',
+  'SignCreateGroupedOrders',
   'SignCancelOrder',
   'SignCancelAllOrders',
   'SignModifyOrder',
@@ -195,6 +197,35 @@ export class WasmInstance {
         a.accountIndex,
       ),
       'SignCreateOrder',
+    );
+  }
+
+  signCreateGroupedOrders(a: SignCreateGroupedOrdersArgs): WasmTx {
+    const orders = a.orders.map((o) => ({
+      MarketIndex: o.marketIndex,
+      ClientOrderIndex: o.clientOrderIndex,
+      BaseAmount: o.baseAmount,
+      Price: o.price,
+      IsAsk: o.isAsk,
+      Type: o.orderType,
+      TimeInForce: o.timeInForce,
+      ReduceOnly: o.reduceOnly,
+      TriggerPrice: o.triggerPrice,
+      OrderExpiry: o.orderExpiry,
+    }));
+    return toTx(
+      this.fns.SignCreateGroupedOrders(
+        a.groupingType,
+        orders,
+        0, // integratorAccountIndex
+        0, // integratorTakerFee
+        0, // integratorMakerFee
+        0, // skipNonce
+        a.nonce,
+        a.apiKeyIndex,
+        a.accountIndex,
+      ),
+      'SignCreateGroupedOrders',
     );
   }
 
@@ -546,6 +577,30 @@ export interface SignCreateOrderArgs {
   reduceOnly: number;
   triggerPrice: number;
   orderExpiry: number;
+  nonce: number;
+  apiKeyIndex: number;
+  accountIndex: number;
+}
+
+/** Un ordre d'un lot groupé (mêmes champs qu'un ordre simple, hors nonce/clés). */
+export interface GroupedOrderLeg {
+  marketIndex: number;
+  clientOrderIndex: number;
+  baseAmount: number;
+  price: number;
+  isAsk: number;
+  orderType: number;
+  timeInForce: number;
+  reduceOnly: number;
+  triggerPrice: number;
+  /** `-1` = défaut (28 jours). */
+  orderExpiry: number;
+}
+
+export interface SignCreateGroupedOrdersArgs {
+  /** Type de groupement (0 = aucun, OCO/bracket selon le protocole). */
+  groupingType: number;
+  orders: GroupedOrderLeg[];
   nonce: number;
   apiKeyIndex: number;
   accountIndex: number;

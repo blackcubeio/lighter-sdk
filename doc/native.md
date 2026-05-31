@@ -64,6 +64,19 @@ await dex.native.pools().mint({ publicPoolIndex: 3, shareAmount: 1000 });
 await dex.native.pools().burn({ publicPoolIndex: 3, shareAmount: 500 });
 ```
 
+## `native.advancedOrders()` — `IAdvancedOrders` (ordres groupés, TX 28)
+*(verbe aligné `placeBatch` ; `groupingType` : 0 = lot indépendant, autres = OCO/bracket. La façade résout marché + scaling par leg.)*
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `placeBatch(orders, groupingType?)` | `GroupedOrder[]` `{ name; side; type; size; price; tif?; reduceOnly?; triggerPrice?; clientId? }` | `Promise<TxResult>` |
+
+```ts
+await dex.native.advancedOrders().placeBatch([
+  { name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '30000', tif: 'alo' },
+  { name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '29000', tif: 'alo' },
+]);
+```
+
 ## `native.staking()` — `IStaking` (stake / unstake)
 | Méthode | Entrée | Sortie |
 |---|---|---|

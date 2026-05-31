@@ -23,6 +23,7 @@ import { getActiveOrders, getInactiveOrders } from '../rest/account-orders';
 import { getAuthToken } from '../rest/auth';
 import { cancelAllOrders, disarmCancelAll, scheduleCancelAll } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
+import { createGroupedOrders } from '../rest/create-grouped-orders';
 import { createSubAccount } from '../rest/create-sub-account';
 import { modifyOrder } from '../rest/edit-order';
 import { fetchAccount, getAccountInfo, getBalances, getPositions } from '../rest/get-account';
@@ -76,7 +77,9 @@ import type {
   WithdrawInput,
 } from './contract';
 import type {
+  GroupedOrder,
   IAccountConfig,
+  IAdvancedOrders,
   IApiKeys,
   IPools,
   IStaking,
@@ -766,6 +769,47 @@ class LighterAccountConfig extends LighterScope implements IAccountConfig {
   }
 }
 
+/** Scope **advancedOrders** : ordres groupés (TX 28) — {@link IAdvancedOrders}. */
+class LighterAdvancedOrders extends LighterScope implements IAdvancedOrders {
+  constructor(
+    client: LighterClient,
+    label: string | undefined,
+    private readonly markets: MarketsResolver,
+  ) {
+    super(client, label);
+  }
+
+  public async placeBatch(orders: GroupedOrder[], groupingType = 0): Promise<SendTxResult> {
+    const legs = await Promise.all(
+      orders.map(async (o) => {
+        const spec = PLACE_ORDER_TYPE[o.type];
+        const meta = await this.markets.meta(o.name, 'perp', this.label);
+        const tif = spec.market
+          ? TIF.ioc
+          : o.tif === 'ioc'
+            ? TIF.ioc
+            : o.tif === 'alo'
+              ? TIF.alo
+              : TIF.gtt;
+        return {
+          marketIndex: meta.marketId,
+          clientOrderIndex: o.clientId !== undefined ? Number(o.clientId) : 0,
+          baseAmount: scaleToInt(o.size, meta.sizeDecimals),
+          price: scaleToInt(o.price, meta.priceDecimals),
+          isAsk: o.side === 'sell' ? 1 : 0,
+          orderType: spec.native,
+          timeInForce: tif,
+          reduceOnly: o.reduceOnly === true ? 1 : 0,
+          triggerPrice:
+            o.triggerPrice !== undefined ? scaleToInt(o.triggerPrice, meta.priceDecimals) : 0,
+          orderExpiry: tif === TIF.ioc ? 0 : -1,
+        };
+      }),
+    );
+    return createGroupedOrders(this.client, this.signed(), { groupingType, orders: legs });
+  }
+}
+
 /**
  * Façade **Lighter** : `const dex = new Lighter({ deskA: signer }, { default: 'deskA' })`, puis
  * `dex.perp(label?)` / `dex.spot(label?)` (marché perp / spot), `dex.account(label?)` (compte),
@@ -855,6 +899,8 @@ export class Lighter {
       staking: (label?: string) => new LighterStaking(c, r(label)),
       /** Mode de trading + activation d'un actif comme marge — `IAccountConfig`. */
       accountConfig: (label?: string) => new LighterAccountConfig(c, r(label)),
+      /** Ordres groupés (TX 28, OCO/bracket) — `IAdvancedOrders`. */
+      advancedOrders: (label?: string) => new LighterAdvancedOrders(c, r(label), this.markets),
     };
   }
 
