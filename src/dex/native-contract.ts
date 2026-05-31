@@ -67,13 +67,18 @@ export interface INativePerp {
   placeBatch(orders: GroupedOrder[], groupingType?: number): Promise<Order[]>;
 }
 
-/** Entrée — lecture du PnL (résolution + bornes). */
+/** Entrée — lecture du PnL (résolution + bornes **datetime** `YYYY-MM-DD HH:MM:SS` UTC). */
 export interface PnlParams {
   resolution: string;
-  startTime: number;
-  endTime: number;
+  startTime: string;
+  endTime: string;
   countBack?: number;
   ignoreTransfers?: boolean;
+}
+/** Entrée — filtre de lecture de compte (par paire). */
+export interface AccountReadParams {
+  limit?: number;
+  name?: string;
 }
 /** Entrée — configuration de compte (mode de trading). */
 export interface UpdateSettingsParams {
@@ -90,13 +95,10 @@ export interface UpdateAssetConfigParams {
  * par le scope). Absorbe l'ex-`accountConfig` : `updateSettings` (mode de trading), `updateAssetConfig`.
  */
 export interface INativeAccount {
-  /** Liquidations du compte → `Liquidation[]` (interface dédiée, champs aux noms du cœur). */
-  getLiquidations(query?: { limit?: number; marketId?: number }): Promise<Liquidation[]>;
-  /** Paiements de funding par position → `PositionFundingEntry[]` (interface dédiée, noms du cœur). */
-  getPositionFunding(query?: {
-    limit?: number;
-    marketId?: number;
-  }): Promise<PositionFundingEntry[]>;
+  /** Liquidations du compte → `Liquidation[]` (filtre `name` ; interface dédiée, champs aux noms du cœur). */
+  getLiquidations(query?: AccountReadParams): Promise<Liquidation[]>;
+  /** Paiements de funding par position → `PositionFundingEntry[]` (filtre `name` ; noms du cœur). */
+  getPositionFunding(query?: AccountReadParams): Promise<PositionFundingEntry[]>;
   /** Courbe de PnL du compte → `PnlPoint[]` (interface dédiée, `time`/`pnl` ; composantes en `xtras`). */
   getPnl(query: PnlParams): Promise<PnlPoint[]>;
   updateSettings(params: UpdateSettingsParams): Promise<TxResult>;

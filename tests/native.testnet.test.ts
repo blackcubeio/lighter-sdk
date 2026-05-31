@@ -92,10 +92,11 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
     expect(Array.isArray(liq)).toBe(true);
     const pf = await acc.getPositionFunding({ limit: 10 });
     expect(Array.isArray(pf)).toBe(true);
+    const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
     const pnl = await acc.getPnl({
       resolution: '1h',
-      startTime: Date.now() - 7 * 86_400_000,
-      endTime: Date.now(),
+      startTime: fmt(Date.now() - 7 * 86_400_000),
+      endTime: fmt(Date.now()),
       countBack: 10,
     });
     console.log('pnl points:', pnl.length);

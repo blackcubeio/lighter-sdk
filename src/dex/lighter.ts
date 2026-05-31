@@ -91,6 +91,7 @@ import type {
   WithdrawParams,
 } from './contract';
 import type {
+  AccountReadParams,
   GroupedOrder,
   INativeAccount,
   INativePerp,
@@ -98,6 +99,7 @@ import type {
   ISigning,
   IStaking,
   ISubAccountsAdmin,
+  PnlParams,
 } from './native-contract';
 
 /** Métadonnée de marché résolue (pour le mapping `name → market_id` + scaling décimal). */
@@ -856,15 +858,20 @@ class LighterAccountExtra extends LighterScope implements INativeAccount {
     super(client, label);
   }
 
-  public async getLiquidations(query?: {
-    limit?: number;
-    marketId?: number;
-  }): Promise<Liquidation[]> {
+  /** Résout `name` → `market_id` natif (filtre de lecture), `undefined` si absent. */
+  private async marketIdOf(name?: string): Promise<number | undefined> {
+    return name === undefined
+      ? undefined
+      : (await this.markets.meta(name, 'perp', this.label)).marketId;
+  }
+
+  public async getLiquidations(query?: AccountReadParams): Promise<Liquidation[]> {
     const { auth } = await getAuthToken(this.client, this.signed());
+    const marketId = await this.marketIdOf(query?.name);
     const [env, nameOf] = await Promise.all([
       getLiquidations(
         this.client,
-        { accountIndex: this.accountIndex(), auth, ...query },
+        { accountIndex: this.accountIndex(), auth, limit: query?.limit, marketId },
         this.label,
       ),
       this.markets.nameOf(this.label),
@@ -872,15 +879,13 @@ class LighterAccountExtra extends LighterScope implements INativeAccount {
     const converter = new LiquidationConverter(nameOf);
     return (env.liquidations ?? []).map((l) => converter.toCommon(l));
   }
-  public async getPositionFunding(query?: {
-    limit?: number;
-    marketId?: number;
-  }): Promise<PositionFundingEntry[]> {
+  public async getPositionFunding(query?: AccountReadParams): Promise<PositionFundingEntry[]> {
     const { auth } = await getAuthToken(this.client, this.signed());
+    const marketId = await this.marketIdOf(query?.name);
     const [env, nameOf] = await Promise.all([
       getPositionFunding(
         this.client,
-        { accountIndex: this.accountIndex(), auth, ...query },
+        { accountIndex: this.accountIndex(), auth, limit: query?.limit, marketId },
         this.label,
       ),
       this.markets.nameOf(this.label),
@@ -888,17 +893,19 @@ class LighterAccountExtra extends LighterScope implements INativeAccount {
     const converter = new PositionFundingConverter(nameOf);
     return (env.position_fundings ?? []).map((p) => converter.toCommon(p));
   }
-  public async getPnl(query: {
-    resolution: string;
-    startTime: number;
-    endTime: number;
-    countBack?: number;
-    ignoreTransfers?: boolean;
-  }): Promise<PnlPoint[]> {
+  public async getPnl(query: PnlParams): Promise<PnlPoint[]> {
     const { auth } = await getAuthToken(this.client, this.signed());
     const env = await getPnl(
       this.client,
-      { accountIndex: this.accountIndex(), auth, ...query },
+      {
+        accountIndex: this.accountIndex(),
+        auth,
+        resolution: query.resolution,
+        startTime: dateToMs(query.startTime),
+        endTime: dateToMs(query.endTime),
+        countBack: query.countBack,
+        ignoreTransfers: query.ignoreTransfers,
+      },
       this.label,
     );
     const converter = new PnlConverter();

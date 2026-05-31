@@ -87,16 +87,16 @@ await dex.native.perp().placeBatch([
 *(`accountIndex` + token `auth` injectés par le scope. Absorbe l'ex-`accountConfig`.)*
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `getLiquidations(q?)` | `{ limit?; marketId? }` | `Promise<Liquidation[]>` (interface dédiée : `name`/`id`/`side`/`size`/`price`/`fee`/`type`/`time`) |
-| `getPositionFunding(q?)` | `{ limit?; marketId? }` | `Promise<PositionFundingEntry[]>` (interface dédiée : `name`/`side`/`size`/`fundingRate`/`pnl`/`time`) |
-| `getPnl(q)` | `PnlParams` `{ resolution; startTime; endTime; countBack?; ignoreTransfers? }` | `Promise<PnlPoint[]>` (interface dédiée : `time`/`pnl` ; composantes pool/staking/volume en `xtras`) |
+| `getLiquidations(q?)` | `{ limit?; name? }` | `Promise<Liquidation[]>` (interface dédiée : `name`/`id`/`side`/`size`/`price`/`fee`/`type`/`time`) |
+| `getPositionFunding(q?)` | `{ limit?; name? }` | `Promise<PositionFundingEntry[]>` (interface dédiée : `name`/`side`/`size`/`fundingRate`/`pnl`/`time`) |
+| `getPnl(q)` | `PnlParams` `{ resolution; startTime; endTime (datetime); countBack?; ignoreTransfers? }` | `Promise<PnlPoint[]>` (interface dédiée : `time`/`pnl` ; composantes pool/staking/volume en `xtras`) |
 | `updateSettings(p)` | `UpdateSettingsParams` `{ accountTradingMode }` | `Promise<TxResult>` |
 | `updateAssetConfig(p)` | `UpdateAssetConfigParams` `{ assetIndex; assetMarginMode }` | `Promise<TxResult>` |
 
 ```ts
 await dex.native.account().getLiquidations({ limit: 20 });
-await dex.native.account().getPositionFunding({ marketId: 1, limit: 20 });
-await dex.native.account().getPnl({ resolution: '1h', startTime: Date.now() - 7 * 86_400_000, endTime: Date.now() });
+await dex.native.account().getPositionFunding({ name: 'BTC', limit: 20 });
+await dex.native.account().getPnl({ resolution: '1h', startTime: '2026-05-25 00:00:00', endTime: '2026-06-01 00:00:00' });
 await dex.native.account().updateSettings({ accountTradingMode: 1 });
 await dex.native.account().updateAssetConfig({ assetIndex: 0, assetMarginMode: 1 });
 ```
