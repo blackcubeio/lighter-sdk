@@ -84,12 +84,11 @@ import type {
 } from './contract';
 import type {
   GroupedOrder,
-  IAccountConfig,
-  IApiKeys,
   INativeAccount,
   INativeMarket,
   INativeOrders,
   IPools,
+  ISigning,
   IStaking,
   ISubAccountsAdmin,
 } from './native-contract';
@@ -738,8 +737,8 @@ class LighterScope {
   }
 }
 
-/** Scope **apiKeys** : génération de clés, nonce, token d'auth — {@link ILighterApiKeys}. */
-class LighterApiKeys extends LighterScope implements IApiKeys {
+/** Scope **signing** : génération de clés API, nonce, token d'auth — {@link ISigning}. */
+class LighterSigning extends LighterScope implements ISigning {
   private signer(): Signer {
     const signer = this.client.signers[this.signed()];
     if (signer === undefined) {
@@ -751,11 +750,11 @@ class LighterApiKeys extends LighterScope implements IApiKeys {
     const wasm = await getWasmInstance(this.client.restUrls[this.signer().network]);
     return wasm.generateApiKey();
   }
-  public nextNonce(): Promise<number> {
+  public getNextNonce(): Promise<number> {
     const signer = this.signer();
     return getNextNonce(this.client, signer.accountIndex, signer.apiKeyIndex, this.label);
   }
-  public authToken(deadlineSeconds?: number): Promise<string> {
+  public getAuthToken(deadlineSeconds?: number): Promise<string> {
     return getAuthToken(this.client, this.signed(), deadlineSeconds).then((r) => r.auth);
   }
 }
@@ -799,38 +798,29 @@ class LighterPools extends LighterScope implements IPools {
   }
 }
 
-/** Scope **staking** — {@link IStaking}. */
+/** Scope **staking** : verbes alignés `deposit`/`withdraw` (HL) — {@link IStaking}. */
 class LighterStaking extends LighterScope implements IStaking {
-  public stake(params: Parameters<typeof stakeAssets>[2]): Promise<SendTxResult> {
+  public deposit(params: Parameters<typeof stakeAssets>[2]): Promise<SendTxResult> {
     return stakeAssets(this.client, this.signed(), params);
   }
-  public unstake(params: Parameters<typeof unstakeAssets>[2]): Promise<SendTxResult> {
+  public withdraw(params: Parameters<typeof unstakeAssets>[2]): Promise<SendTxResult> {
     return unstakeAssets(this.client, this.signed(), params);
-  }
-}
-
-/** Scope **accountConfig** : mode de trading + activation d'un actif comme marge — {@link IAccountConfig}. */
-class LighterAccountConfig extends LighterScope implements IAccountConfig {
-  public update(params: Parameters<typeof updateAccountConfig>[2]): Promise<SendTxResult> {
-    return updateAccountConfig(this.client, this.signed(), params);
-  }
-  public updateAsset(
-    params: Parameters<typeof updateAccountAssetConfig>[2],
-  ): Promise<SendTxResult> {
-    return updateAccountAssetConfig(this.client, this.signed(), params);
   }
 }
 
 /** Scope **marketData** : données de marché supplémentaires publiques — {@link INativeMarket}. */
 class LighterMarketData extends LighterScope implements INativeMarket {
-  public fundingRates() {
+  public getFundingRates() {
     return getFundingRates(this.client, this.label);
   }
 }
 
-/** Scope **account** : lectures de compte étendues authentifiées — {@link INativeAccount}. */
+/**
+ * Scope **account** : lectures de compte étendues authentifiées + configuration de compte
+ * (absorbe l'ex-`accountConfig`) — {@link INativeAccount}.
+ */
 class LighterAccountExtra extends LighterScope implements INativeAccount {
-  public async liquidations(query?: { limit?: number; marketId?: number }) {
+  public async getLiquidations(query?: { limit?: number; marketId?: number }) {
     const { auth } = await getAuthToken(this.client, this.signed());
     return getLiquidations(
       this.client,
@@ -838,7 +828,7 @@ class LighterAccountExtra extends LighterScope implements INativeAccount {
       this.label,
     );
   }
-  public async positionFunding(query?: { limit?: number; marketId?: number }) {
+  public async getPositionFunding(query?: { limit?: number; marketId?: number }) {
     const { auth } = await getAuthToken(this.client, this.signed());
     return getPositionFunding(
       this.client,
@@ -846,7 +836,7 @@ class LighterAccountExtra extends LighterScope implements INativeAccount {
       this.label,
     );
   }
-  public async pnl(query: {
+  public async getPnl(query: {
     resolution: string;
     startTime: number;
     endTime: number;
@@ -856,14 +846,23 @@ class LighterAccountExtra extends LighterScope implements INativeAccount {
     const { auth } = await getAuthToken(this.client, this.signed());
     return getPnl(this.client, { accountIndex: this.accountIndex(), auth, ...query }, this.label);
   }
+  public updateSettings(params: Parameters<typeof updateAccountConfig>[2]): Promise<SendTxResult> {
+    return updateAccountConfig(this.client, this.signed(), params);
+  }
+  public updateAssetConfig(
+    params: Parameters<typeof updateAccountAssetConfig>[2],
+  ): Promise<SendTxResult> {
+    return updateAccountAssetConfig(this.client, this.signed(), params);
+  }
 }
 
 /**
  * Façade **Lighter** : `const dex = new Lighter({ deskA: signer }, { default: 'deskA' })`, puis
  * `dex.perp(label?)` / `dex.spot(label?)` (marché perp / spot), `dex.account(label?)` (compte),
  * `dex.ws(label?)` / `dex.wsSpot(label?)` (temps réel). `dex.transfers()` (transferts unifiés).
- * Surplus spécifique via `dex.native.<cap>()` : `apiKeys`, `subAccounts`, `pools`, `staking`,
- * `accountConfig`, `marketData`, `account`. (Les ordres groupés `placeBatch` sont sur `perp()`/`spot()`.)
+ * Surplus spécifique via `dex.native.<cap>()` : `signing`, `subAccounts`, `pools`, `staking`,
+ * `marketData`, `account` (lectures + updateSettings/updateAssetConfig). (Les ordres groupés
+ * `placeBatch` sont sur `perp()`/`spot()`.)
  *
  * Chaque instance détient son propre {@link LighterClient} (config isolée). Le **signer WASM**
  * est instancié **une fois par réseau** (lazy au 1er appel signé), donc mainnet et testnet
@@ -941,19 +940,17 @@ export class Lighter {
     const c = this.client;
     const r = (label?: string) => this.resolve(label);
     return {
-      /** Clés API + helpers de signature (génération, nonce, token d'auth) — `IApiKeys`. */
-      apiKeys: (label?: string) => new LighterApiKeys(c, r(label)),
+      /** Signature : génération de clé API, nonce, token d'auth — `ISigning`. */
+      signing: (label?: string) => new LighterSigning(c, r(label)),
       /** Création de sous-comptes — `ISubAccountsAdmin`. */
       subAccounts: (label?: string) => new LighterSubAccounts(c, r(label)),
       /** Public pools (LP) — `IPools`. */
       pools: (label?: string) => new LighterPools(c, r(label)),
-      /** Stake / unstake d'actifs — `IStaking`. */
+      /** Staking (deposit / withdraw) — `IStaking`. */
       staking: (label?: string) => new LighterStaking(c, r(label)),
-      /** Mode de trading + activation d'un actif comme marge — `IAccountConfig`. */
-      accountConfig: (label?: string) => new LighterAccountConfig(c, r(label)),
       /** Données de marché supplémentaires (funding-rates courants) — `INativeMarket`. */
       marketData: (label?: string) => new LighterMarketData(c, r(label)),
-      /** Lectures de compte étendues (liquidations, positionFunding, pnl) — `INativeAccount`. */
+      /** Lectures de compte étendues + config de compte (updateSettings/updateAssetConfig) — `INativeAccount`. */
       account: (label?: string) => new LighterAccountExtra(c, r(label)),
     };
   }

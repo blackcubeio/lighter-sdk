@@ -16,14 +16,14 @@ import type { PlaceOrderParams } from './contract';
  * Note : le signer WASM officiel sait aussi signer pools / staking / approbation d'intégrateur.
  */
 
-/** Clés API + helpers de signature (génération de clé, nonce, token d'auth) — spécifique Lighter. */
-export interface IApiKeys {
+/** Signature : génération de clé API, nonce, token d'auth (signer WASM) — spécifique Lighter. */
+export interface ISigning {
   /** Génère une nouvelle paire de clés API (clé privée + publique) via le signer WASM. */
   generate(): Promise<{ privateKey: string; publicKey: string }>;
   /** Prochain nonce de l'API key du signer. */
-  nextNonce(): Promise<number>;
+  getNextNonce(): Promise<number>;
   /** Token d'authentification pour les lectures privées (deadline en secondes, défaut +1 h). */
-  authToken(deadlineSeconds?: number): Promise<string>;
+  getAuthToken(deadlineSeconds?: number): Promise<string>;
 }
 
 /** Création de sous-comptes (la **liste** est dans `account().getSubAccounts()`). Verbe aligné `create`. */
@@ -59,83 +59,88 @@ export interface INativeOrders {
 /** Données de marché supplémentaires (lectures publiques). */
 export interface INativeMarket {
   /** Taux de funding courants par marché / exchange de référence. */
-  fundingRates(): ReturnType<typeof getFundingRates>;
+  getFundingRates(): ReturnType<typeof getFundingRates>;
 }
 
-/** Lectures de compte étendues (authentifiées ; `accountIndex`+`auth` injectés par le scope). */
+/** Entrée — lecture du PnL (résolution + bornes). */
+export interface PnlParams {
+  resolution: string;
+  startTime: number;
+  endTime: number;
+  countBack?: number;
+  ignoreTransfers?: boolean;
+}
+/** Entrée — configuration de compte (mode de trading). */
+export interface UpdateSettingsParams {
+  accountTradingMode: number;
+}
+/** Entrée — configuration d'un actif comme marge. */
+export interface UpdateAssetConfigParams {
+  assetIndex: number;
+  assetMarginMode: number;
+}
+
+/**
+ * Lectures **et** configuration de compte étendues (authentifiées ; `accountIndex`+`auth` injectés
+ * par le scope). Absorbe l'ex-`accountConfig` : `updateSettings` (mode de trading), `updateAssetConfig`.
+ */
 export interface INativeAccount {
-  liquidations(query?: { limit?: number; marketId?: number }): ReturnType<typeof getLiquidations>;
-  positionFunding(query?: {
+  getLiquidations(query?: {
+    limit?: number;
+    marketId?: number;
+  }): ReturnType<typeof getLiquidations>;
+  getPositionFunding(query?: {
     limit?: number;
     marketId?: number;
   }): ReturnType<typeof getPositionFunding>;
-  pnl(query: {
-    resolution: string;
-    startTime: number;
-    endTime: number;
-    countBack?: number;
-    ignoreTransfers?: boolean;
-  }): ReturnType<typeof getPnl>;
+  getPnl(query: PnlParams): ReturnType<typeof getPnl>;
+  updateSettings(params: UpdateSettingsParams): Promise<TxResult>;
+  updateAssetConfig(params: UpdateAssetConfigParams): Promise<TxResult>;
 }
 
 /** Entrée — création d'une public pool. */
-export interface CreatePublicPool {
+export interface CreatePublicPoolParams {
   operatorFee: number;
   initialTotalShares: number;
   minOperatorShareRate: number;
 }
 /** Entrée — mise à jour d'une public pool. */
-export interface UpdatePublicPool {
+export interface UpdatePublicPoolParams {
   publicPoolIndex: number;
   status: number;
   operatorFee: number;
   minOperatorShareRate: number;
 }
 /** Entrée — émission/destruction de parts de pool. */
-export interface MintShares {
+export interface MintSharesParams {
   publicPoolIndex: number;
   shareAmount: number;
 }
-export interface BurnShares {
+export interface BurnSharesParams {
   publicPoolIndex: number;
   shareAmount: number;
 }
 
 /** Public pools (LP) Lighter. Verbes alignés `create`/`update` (+ `mint`/`burn` métier). */
 export interface IPools {
-  create(params: CreatePublicPool): Promise<TxResult>;
-  update(params: UpdatePublicPool): Promise<TxResult>;
-  mint(params: MintShares): Promise<TxResult>;
-  burn(params: BurnShares): Promise<TxResult>;
+  create(params: CreatePublicPoolParams): Promise<TxResult>;
+  update(params: UpdatePublicPoolParams): Promise<TxResult>;
+  mint(params: MintSharesParams): Promise<TxResult>;
+  burn(params: BurnSharesParams): Promise<TxResult>;
 }
 
-/** Entrée — stake / unstake d'actifs. */
-export interface Stake {
+/** Entrée — dépôt / retrait de staking (parts de pool de staking). */
+export interface StakingDepositParams {
   stakingPoolIndex: number;
   shareAmount: number;
 }
-export interface Unstake {
+export interface StakingWithdrawParams {
   stakingPoolIndex: number;
   shareAmount: number;
 }
 
-/** Staking d'actifs Lighter. */
+/** Staking Lighter. Verbes alignés `deposit`/`withdraw` (HL). */
 export interface IStaking {
-  stake(params: Stake): Promise<TxResult>;
-  unstake(params: Unstake): Promise<TxResult>;
-}
-
-/** Entrée — configuration de compte / d'actif. */
-export interface UpdateAccountConfig {
-  accountTradingMode: number;
-}
-export interface UpdateAccountAssetConfig {
-  assetIndex: number;
-  assetMarginMode: number;
-}
-
-/** Configuration de compte Lighter : mode de trading, activation d'un actif comme marge. */
-export interface IAccountConfig {
-  update(params: UpdateAccountConfig): Promise<TxResult>;
-  updateAsset(params: UpdateAccountAssetConfig): Promise<TxResult>;
+  deposit(params: StakingDepositParams): Promise<TxResult>;
+  withdraw(params: StakingWithdrawParams): Promise<TxResult>;
 }

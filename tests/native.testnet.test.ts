@@ -5,7 +5,7 @@ import { Lighter } from '../src/dex/lighter';
 
 // Validation des capacités **signées** du namespace `native` sur **testnet réel** (politique : on
 // valide toujours les capacités signées). On exerce le chemin signé non destructeur de
-// `native.apiKeys()` (génération locale WASM, nonce, token d'auth) après la migration sous `native`
+// `native.signing()` (génération locale WASM, nonce, token d'auth) après la migration sous `native`
 // + alignement des verbes. Les écritures (create/transfer/pools/staking) ne sont pas exercées ici
 // (effets de bord / fonds).
 if (existsSync('.env')) {
@@ -73,8 +73,8 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
     }
   }, 30_000);
 
-  it('native.marketData().fundingRates() (public réel)', async () => {
-    const fr = await dex.native.marketData().fundingRates();
+  it('native.marketData().getFundingRates() (public réel)', async () => {
+    const fr = await dex.native.marketData().getFundingRates();
     console.log('funding_rates:', fr.funding_rates?.length);
     expect(Array.isArray(fr.funding_rates)).toBe(true);
     expect((fr.funding_rates ?? []).length).toBeGreaterThan(0);
@@ -82,11 +82,11 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
 
   it('native.account() : liquidations / positionFunding / pnl (authentifiés réels)', async () => {
     const acc = dex.native.account();
-    const liq = await acc.liquidations({ limit: 10 });
+    const liq = await acc.getLiquidations({ limit: 10 });
     expect(liq.code).toBe(200);
-    const pf = await acc.positionFunding({ limit: 10 });
+    const pf = await acc.getPositionFunding({ limit: 10 });
     expect(pf.code).toBe(200);
-    const pnl = await acc.pnl({
+    const pnl = await acc.getPnl({
       resolution: '1h',
       startTime: Date.now() - 7 * 86_400_000,
       endTime: Date.now(),
@@ -96,21 +96,21 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
     expect(pnl.code).toBe(200);
   }, 30_000);
 
-  it('native.apiKeys().generate() (WASM local)', async () => {
-    const key = await dex.native.apiKeys().generate();
+  it('native.signing().generate() (WASM local)', async () => {
+    const key = await dex.native.signing().generate();
     expect(key.privateKey).toMatch(/^0x[0-9a-f]+/i);
     expect(typeof key.publicKey).toBe('string');
   });
 
-  it('native.apiKeys().nextNonce() (signé)', async () => {
-    const nonce = await dex.native.apiKeys().nextNonce();
+  it('native.signing().getNextNonce() (signé)', async () => {
+    const nonce = await dex.native.signing().getNextNonce();
     console.log('nextNonce:', nonce);
     expect(Number.isInteger(nonce)).toBe(true);
     expect(nonce).toBeGreaterThanOrEqual(0);
   });
 
-  it('native.apiKeys().authToken() (signé)', async () => {
-    const token = await dex.native.apiKeys().authToken();
+  it('native.signing().getAuthToken() (signé)', async () => {
+    const token = await dex.native.signing().getAuthToken();
     console.log('authToken len:', token.length);
     expect(typeof token).toBe('string');
     expect(token.length).toBeGreaterThan(0);

@@ -1,32 +1,31 @@
 # Surface `native` — spécifique à `@blackcube/lighter-sdk`
 
 Capacités **propres à Lighter**, hors contrat unifié (voir [`common.md`](common.md) pour le portable).
-Accès uniforme à tous les SDK : **`dex.native.<capacité>(label?)`**. Les noms d'interfaces (`IApiKeys`,
-`ITransfers`, `IPools`…) et de méthodes sont **alignés entre SDK** quand le geste existe ailleurs
-(`create`/`update`/`transfer`…) ; sinon descriptifs. Les types d'entrée portent des **noms de concept
-propres** (sans suffixe `Input`/`Params`).
+Accès uniforme à tous les SDK : **`dex.native.<capacité>(label?)`**. Les noms d'interfaces (`ISigning`,
+`IPools`, `IStaking`…) et de méthodes sont **alignés entre SDK** quand le geste existe ailleurs
+(`create`/`update`/`deposit`/`get…`…) ; sinon descriptifs. Les types d'entrée portent le suffixe `Params`.
 
 ```ts
 const dex = new Lighter({ desk: signer }, { default: 'desk' });
-const token = await dex.native.apiKeys().authToken();
+const token = await dex.native.signing().getAuthToken();
 ```
 
 `label?` choisit le signer (défaut : signer par défaut). Les capacités natives sont **signées**
-(signer WASM requis), sauf `apiKeys().generate()` qui est purement local.
+(signer WASM requis), sauf `signing().generate()` qui est purement local.
 
 ---
 
-## `native.apiKeys()` — `IApiKeys` (clés API + helpers de signature)
+## `native.signing()` — `ISigning` (clés API + helpers de signature)
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `generate()` | — | `Promise<{ privateKey; publicKey }>` (local, WASM) |
-| `nextNonce()` | — | `Promise<number>` |
-| `authToken(deadlineSeconds?)` | `number?` | `Promise<string>` |
+| `getNextNonce()` | — | `Promise<number>` |
+| `getAuthToken(deadlineSeconds?)` | `number?` | `Promise<string>` |
 
 ```ts
-await dex.native.apiKeys().generate();
-await dex.native.apiKeys().nextNonce();
-await dex.native.apiKeys().authToken(3600);
+await dex.native.signing().generate();
+await dex.native.signing().getNextNonce();
+await dex.native.signing().getAuthToken(3600);
 ```
 
 ## `native.subAccounts()` — `ISubAccountsAdmin` (création)
@@ -76,54 +75,48 @@ await dex.perp().placeBatch([
 ## `native.marketData()` — `INativeMarket` (données de marché publiques)
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `fundingRates()` | — | `Promise<{ funding_rates }>` (taux courants par marché/exchange) |
+| `getFundingRates()` | — | `Promise<{ funding_rates }>` (taux courants par marché/exchange) |
 
 ```ts
-await dex.native.marketData().fundingRates();
+await dex.native.marketData().getFundingRates();
 ```
 
-## `native.account()` — `INativeAccount` (lectures de compte authentifiées)
-*(`accountIndex` + token `auth` injectés par le scope.)*
+## `native.account()` — `INativeAccount` (lectures + config de compte authentifiées)
+*(`accountIndex` + token `auth` injectés par le scope. Absorbe l'ex-`accountConfig`.)*
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `liquidations(q?)` | `{ limit?; marketId? }` | `Promise<{ liquidations }>` |
-| `positionFunding(q?)` | `{ limit?; marketId? }` | `Promise<{ position_fundings }>` |
-| `pnl(q)` | `{ resolution; startTime; endTime; countBack?; ignoreTransfers? }` | `Promise<{ pnl }>` |
+| `getLiquidations(q?)` | `{ limit?; marketId? }` | `Promise<{ liquidations }>` |
+| `getPositionFunding(q?)` | `{ limit?; marketId? }` | `Promise<{ position_fundings }>` |
+| `getPnl(q)` | `PnlParams` `{ resolution; startTime; endTime; countBack?; ignoreTransfers? }` | `Promise<{ pnl }>` |
+| `updateSettings(p)` | `UpdateSettingsParams` `{ accountTradingMode }` | `Promise<TxResult>` |
+| `updateAssetConfig(p)` | `UpdateAssetConfigParams` `{ assetIndex; assetMarginMode }` | `Promise<TxResult>` |
 
 ```ts
-await dex.native.account().liquidations({ limit: 20 });
-await dex.native.account().positionFunding({ marketId: 1, limit: 20 });
-await dex.native.account().pnl({ resolution: '1h', startTime: Date.now() - 7 * 86_400_000, endTime: Date.now() });
+await dex.native.account().getLiquidations({ limit: 20 });
+await dex.native.account().getPositionFunding({ marketId: 1, limit: 20 });
+await dex.native.account().getPnl({ resolution: '1h', startTime: Date.now() - 7 * 86_400_000, endTime: Date.now() });
+await dex.native.account().updateSettings({ accountTradingMode: 1 });
+await dex.native.account().updateAssetConfig({ assetIndex: 0, assetMarginMode: 1 });
 ```
 
-## `native.staking()` — `IStaking` (stake / unstake)
+## `native.staking()` — `IStaking` (deposit / withdraw)
+*(verbes alignés `deposit`/`withdraw`, comme HL.)*
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `stake(p)` | `Stake` `{ stakingPoolIndex; shareAmount }` | `Promise<TxResult>` |
-| `unstake(p)` | `Unstake` `{ stakingPoolIndex; shareAmount }` | `Promise<TxResult>` |
+| `deposit(p)` | `StakingDepositParams` `{ stakingPoolIndex; shareAmount }` | `Promise<TxResult>` |
+| `withdraw(p)` | `StakingWithdrawParams` `{ stakingPoolIndex; shareAmount }` | `Promise<TxResult>` |
 
 ```ts
-await dex.native.staking().stake({ stakingPoolIndex: 0, shareAmount: 1000 });
-await dex.native.staking().unstake({ stakingPoolIndex: 0, shareAmount: 500 });
-```
-
-## `native.accountConfig()` — `IAccountConfig` (mode de trading, marge par actif)
-*(verbe aligné `update`.)*
-| Méthode | Entrée | Sortie |
-|---|---|---|
-| `update(p)` | `UpdateAccountConfig` `{ accountTradingMode }` | `Promise<TxResult>` |
-| `updateAsset(p)` | `UpdateAccountAssetConfig` `{ assetIndex; assetMarginMode }` | `Promise<TxResult>` |
-
-```ts
-await dex.native.accountConfig().update({ accountTradingMode: 1 });
-await dex.native.accountConfig().updateAsset({ assetIndex: 0, assetMarginMode: 1 });
+await dex.native.staking().deposit({ stakingPoolIndex: 0, shareAmount: 1000 });
+await dex.native.staking().withdraw({ stakingPoolIndex: 0, shareAmount: 500 });
 ```
 
 ---
 
 > **Validation** (`tests/native.testnet.test.ts`, testnet réel) :
-> - **testé** : `apiKeys` (generate/nextNonce/authToken), `perp().placeBatch` (chemin TX 28
->   signé — WASM officiel), `marketData.fundingRates` (public), `account` (liquidations/positionFunding/pnl,
->   authentifiés).
+> - **testé** : `signing` (generate/getNextNonce/getAuthToken), `perp().placeBatch` (chemin TX 28
+>   signé — WASM officiel), `marketData.getFundingRates` (public), `account` (getLiquidations/
+>   getPositionFunding/getPnl, authentifiés).
 > - **préparées + documentées, testées manuellement** (écritures à effet de bord / création de ressource) :
->   `subAccounts.create`, `transfers().transfer` (commun), `pools.*`, `staking.*`, `accountConfig.*`.
+>   `subAccounts.create`, `transfers().transfer` (commun), `pools.*`, `staking.deposit/withdraw`,
+>   `account.updateSettings/updateAssetConfig`.
