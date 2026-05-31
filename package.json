@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/lighter-sdk",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "TypeScript SDK for the Lighter exchange (perpetuals orderbook DEX, zk-rollup): REST, WebSocket, official WASM signer",
   "license": "BSD-3-Clause",
   "author": "Blackcube (https://blackcube.io)",
@@ -37,7 +37,13 @@
     }
   },
   "sideEffects": false,
-  "files": ["dist", "doc", "wasm", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "doc",
+    "wasm",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=22"
   },

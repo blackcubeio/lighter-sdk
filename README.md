@@ -34,8 +34,8 @@ const dex = new Lighter(
   { default: 'desk' },
 );
 
-await dex.perp().placeOrder({ name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '50000' });
-await dex.perp().cancelAllOrders({ name: 'BTC' });
+await dex.perp().place({ name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '50000' });
+await dex.perp().cancelAll({ name: 'BTC' });
 const positions = await dex.perp().getPositions();
 ```
 
