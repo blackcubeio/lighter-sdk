@@ -12,7 +12,7 @@ export { setWasmDir } from './rest/wasm-signer';
 export type * from './dex/contract';
 
 /** Interfaces **complémentaires** Lighter (apiKeys / subAccounts / transfers). */
-export type * from './dex/lighter-contract';
+export type * from './dex/native-contract';
 
 /** Configuration d'un signer (passé au constructeur) et réseau. */
 export type { Signer, Network } from './common/types';

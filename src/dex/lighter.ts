@@ -83,7 +83,7 @@ import type {
   ISubAccountsAdmin,
   ITransfers,
   Transfer,
-} from './lighter-contract';
+} from './native-contract';
 
 /** Métadonnée de marché résolue (pour le mapping `name → market_id` + scaling décimal). */
 interface MarketMeta {
