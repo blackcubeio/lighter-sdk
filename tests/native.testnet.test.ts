@@ -73,6 +73,29 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
     }
   }, 30_000);
 
+  it('native.marketData().fundingRates() (public réel)', async () => {
+    const fr = await dex.native.marketData().fundingRates();
+    console.log('funding_rates:', fr.funding_rates?.length);
+    expect(Array.isArray(fr.funding_rates)).toBe(true);
+    expect((fr.funding_rates ?? []).length).toBeGreaterThan(0);
+  });
+
+  it('native.account() : liquidations / positionFunding / pnl (authentifiés réels)', async () => {
+    const acc = dex.native.account();
+    const liq = await acc.liquidations({ limit: 10 });
+    expect(liq.code).toBe(200);
+    const pf = await acc.positionFunding({ limit: 10 });
+    expect(pf.code).toBe(200);
+    const pnl = await acc.pnl({
+      resolution: '1h',
+      startTime: Date.now() - 7 * 86_400_000,
+      endTime: Date.now(),
+      countBack: 10,
+    });
+    console.log('pnl code:', pnl.code);
+    expect(pnl.code).toBe(200);
+  }, 30_000);
+
   it('native.apiKeys().generate() (WASM local)', async () => {
     const key = await dex.native.apiKeys().generate();
     expect(key.privateKey).toMatch(/^0x[0-9a-f]+/i);

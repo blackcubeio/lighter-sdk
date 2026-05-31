@@ -77,6 +77,29 @@ await dex.native.advancedOrders().placeBatch([
 ]);
 ```
 
+## `native.marketData()` — `IMarketDataExtra` (données de marché publiques)
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `fundingRates()` | — | `Promise<{ funding_rates }>` (taux courants par marché/exchange) |
+
+```ts
+await dex.native.marketData().fundingRates();
+```
+
+## `native.account()` — `IAccountExtra` (lectures de compte authentifiées)
+*(`accountIndex` + token `auth` injectés par le scope.)*
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `liquidations(q?)` | `{ limit?; marketId? }` | `Promise<{ liquidations }>` |
+| `positionFunding(q?)` | `{ limit?; marketId? }` | `Promise<{ position_fundings }>` |
+| `pnl(q)` | `{ resolution; startTime; endTime; countBack?; ignoreTransfers? }` | `Promise<{ pnl }>` |
+
+```ts
+await dex.native.account().liquidations({ limit: 20 });
+await dex.native.account().positionFunding({ marketId: 1, limit: 20 });
+await dex.native.account().pnl({ resolution: '1h', startTime: Date.now() - 7 * 86_400_000, endTime: Date.now() });
+```
+
 ## `native.staking()` — `IStaking` (stake / unstake)
 | Méthode | Entrée | Sortie |
 |---|---|---|

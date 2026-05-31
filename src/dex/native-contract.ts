@@ -1,4 +1,8 @@
 import type { TxResult } from '../common/types';
+import type { getFundingRates } from '../rest/get-funding-rates';
+import type { getLiquidations } from '../rest/get-liquidations';
+import type { getPnl } from '../rest/get-pnl';
+import type { getPositionFunding } from '../rest/get-position-funding';
 import type { PlaceOrderInput } from './contract';
 
 /**
@@ -47,6 +51,28 @@ export interface GroupedOrder {
 export interface IAdvancedOrders {
   /** `groupingType` : 0 = aucun, autres valeurs = OCO/bracket selon le protocole. */
   placeBatch(orders: GroupedOrder[], groupingType?: number): Promise<TxResult>;
+}
+
+/** Données de marché supplémentaires (lectures publiques). */
+export interface IMarketDataExtra {
+  /** Taux de funding courants par marché / exchange de référence. */
+  fundingRates(): ReturnType<typeof getFundingRates>;
+}
+
+/** Lectures de compte étendues (authentifiées ; `accountIndex`+`auth` injectés par le scope). */
+export interface IAccountExtra {
+  liquidations(query?: { limit?: number; marketId?: number }): ReturnType<typeof getLiquidations>;
+  positionFunding(query?: {
+    limit?: number;
+    marketId?: number;
+  }): ReturnType<typeof getPositionFunding>;
+  pnl(query: {
+    resolution: string;
+    startTime: number;
+    endTime: number;
+    countBack?: number;
+    ignoreTransfers?: boolean;
+  }): ReturnType<typeof getPnl>;
 }
 
 /** Entrée d'un transfert de collatéral entre comptes. */

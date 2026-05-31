@@ -30,9 +30,13 @@ import { fetchAccount, getAccountInfo, getBalances, getPositions } from '../rest
 import { getCandles } from '../rest/get-candles';
 import { getExchangeInfo } from '../rest/get-exchange-info';
 import { getFundingHistory } from '../rest/get-funding-history';
+import { getFundingRates } from '../rest/get-funding-rates';
+import { getLiquidations } from '../rest/get-liquidations';
 import { getNextNonce } from '../rest/get-next-nonce';
 import { getOrderBook } from '../rest/get-order-book';
 import { fetchMarketMetas, getPairs } from '../rest/get-pairs';
+import { getPnl } from '../rest/get-pnl';
+import { getPositionFunding } from '../rest/get-position-funding';
 import { getPrices } from '../rest/get-prices';
 import { getSubAccounts } from '../rest/get-sub-accounts';
 import { getTrades } from '../rest/get-trades';
@@ -79,8 +83,10 @@ import type {
 import type {
   GroupedOrder,
   IAccountConfig,
+  IAccountExtra,
   IAdvancedOrders,
   IApiKeys,
+  IMarketDataExtra,
   IPools,
   IStaking,
   ISubAccountsAdmin,
@@ -689,6 +695,15 @@ class LighterScope {
     }
     return this.label;
   }
+
+  /** Index de compte du signer (requis par les lectures authentifiées par index). */
+  protected accountIndex(): number {
+    const signer = this.client.signers[this.signed()];
+    if (signer === undefined) {
+      throw new Error(`Aucun signer enregistré sous "${this.label}".`);
+    }
+    return signer.accountIndex;
+  }
 }
 
 /** Scope **apiKeys** : génération de clés, nonce, token d'auth — {@link ILighterApiKeys}. */
@@ -810,6 +825,43 @@ class LighterAdvancedOrders extends LighterScope implements IAdvancedOrders {
   }
 }
 
+/** Scope **marketData** : données de marché supplémentaires publiques — {@link IMarketDataExtra}. */
+class LighterMarketData extends LighterScope implements IMarketDataExtra {
+  public fundingRates() {
+    return getFundingRates(this.client, this.label);
+  }
+}
+
+/** Scope **account** : lectures de compte étendues authentifiées — {@link IAccountExtra}. */
+class LighterAccountExtra extends LighterScope implements IAccountExtra {
+  public async liquidations(query?: { limit?: number; marketId?: number }) {
+    const { auth } = await getAuthToken(this.client, this.signed());
+    return getLiquidations(
+      this.client,
+      { accountIndex: this.accountIndex(), auth, ...query },
+      this.label,
+    );
+  }
+  public async positionFunding(query?: { limit?: number; marketId?: number }) {
+    const { auth } = await getAuthToken(this.client, this.signed());
+    return getPositionFunding(
+      this.client,
+      { accountIndex: this.accountIndex(), auth, ...query },
+      this.label,
+    );
+  }
+  public async pnl(query: {
+    resolution: string;
+    startTime: number;
+    endTime: number;
+    countBack?: number;
+    ignoreTransfers?: boolean;
+  }) {
+    const { auth } = await getAuthToken(this.client, this.signed());
+    return getPnl(this.client, { accountIndex: this.accountIndex(), auth, ...query }, this.label);
+  }
+}
+
 /**
  * Façade **Lighter** : `const dex = new Lighter({ deskA: signer }, { default: 'deskA' })`, puis
  * `dex.perp(label?)` / `dex.spot(label?)` (marché perp / spot), `dex.account(label?)` (compte),
@@ -901,6 +953,10 @@ export class Lighter {
       accountConfig: (label?: string) => new LighterAccountConfig(c, r(label)),
       /** Ordres groupés (TX 28, OCO/bracket) — `IAdvancedOrders`. */
       advancedOrders: (label?: string) => new LighterAdvancedOrders(c, r(label), this.markets),
+      /** Données de marché supplémentaires (funding-rates courants) — `IMarketDataExtra`. */
+      marketData: (label?: string) => new LighterMarketData(c, r(label)),
+      /** Lectures de compte étendues (liquidations, positionFunding, pnl) — `IAccountExtra`. */
+      account: (label?: string) => new LighterAccountExtra(c, r(label)),
     };
   }
 
