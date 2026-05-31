@@ -69,6 +69,17 @@ describe('Lighter — façade & lectures publiques (mainnet réel)', () => {
     expect(await dex.perp().getExchangeInfo()).toBeDefined();
   });
 
+  it('perp().getCandles({ name: BTC, interval: 1h }) — endpoint /candles', async () => {
+    const candles = await dex.perp().getCandles({ name: 'BTC', interval: '1h', limit: 5 });
+    expect(candles.length).toBeGreaterThan(0);
+    const c = candles[0];
+    expect(c?.s).toBe('BTC');
+    expect(c?.i).toBe('1h');
+    expect(c?.kind).toBe('perp');
+    expect(Number(c?.o)).toBeGreaterThan(0);
+    expect(c?.t).toBeGreaterThan(1_700_000_000_000); // open time en ms
+  });
+
   it('spot().getOrderBook résout un marché spot (BASE/QUOTE)', async () => {
     const spots = await dex.spot().getPairs();
     const name = spots[0]?.name as string;
