@@ -3,7 +3,7 @@ import type { getFundingRates } from '../rest/get-funding-rates';
 import type { getLiquidations } from '../rest/get-liquidations';
 import type { getPnl } from '../rest/get-pnl';
 import type { getPositionFunding } from '../rest/get-position-funding';
-import type { PlaceOrderInput } from './contract';
+import type { PlaceOrderParams } from './contract';
 
 /**
  * Interfaces **complémentaires** Lighter : surface spécifique, hors contrat commun aux DEX.
@@ -36,7 +36,7 @@ export interface GroupedOrder {
   /** Paire (ex. `BTC`). */
   name: string;
   side: 'buy' | 'sell';
-  type: PlaceOrderInput['type'];
+  type: PlaceOrderParams['type'];
   /** Taille (chaîne décimale). */
   size: string;
   /** Prix limite / borne de protection (requis). */

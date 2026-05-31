@@ -8,7 +8,7 @@ interface TradesEnvelope extends LighterEnvelope {
   trades?: NativeTrade[];
 }
 
-export interface GetTradesQuery {
+export interface GetTradesParams {
   marketId: number;
   /** Nombre de trades. */
   limit?: number;
@@ -17,7 +17,7 @@ export interface GetTradesQuery {
 /** Trades publics récents au format unifié (`/recentTrades`). */
 export function getTrades(
   client: LighterClient,
-  query: GetTradesQuery,
+  query: GetTradesParams,
   label?: string,
 ): Promise<Trade[]> {
   return httpGet<TradesEnvelope>(

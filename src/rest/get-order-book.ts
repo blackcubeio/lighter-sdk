@@ -9,7 +9,7 @@ interface OrderBookOrdersEnvelope extends LighterEnvelope {
   bids?: NativeBookOrder[];
 }
 
-export interface GetOrderBookQuery {
+export interface GetOrderBookParams {
   marketId: number;
   name: string;
   /** Profondeur (nombre d'ordres demandés par côté). */
@@ -21,7 +21,7 @@ export interface GetOrderBookQuery {
 /** Carnet d'ordres au format unifié (agrégé par prix). */
 export function getOrderBook(
   client: LighterClient,
-  query: GetOrderBookQuery,
+  query: GetOrderBookParams,
   label?: string,
 ): Promise<OrderBook> {
   return httpGet<OrderBookOrdersEnvelope>(

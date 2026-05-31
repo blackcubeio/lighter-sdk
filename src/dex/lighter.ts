@@ -52,11 +52,11 @@ import { getWasmInstance } from '../rest/wasm-signer';
 import { withdraw } from '../rest/withdraw';
 import { UnifiedWsClient } from '../ws/unified-client';
 import type {
-  CancelAllInput,
-  CancelOrderInput,
-  CandlesQuery,
-  EditOrderInput,
-  FundingQuery,
+  CancelAllParams,
+  CancelOrderParams,
+  CandlesParams,
+  EditOrderParams,
+  FundingParams,
   IAccount,
   IDeadManSwitch,
   IIsolatedMargin,
@@ -71,14 +71,14 @@ import type {
   IRemovableMargin,
   ISubAccounts,
   ITrading,
-  IsolatedMarginInput,
-  LeverageInput,
-  MarginModeInput,
-  OrderBookQuery,
-  PlaceOrderInput,
-  SymbolQuery,
-  TradesQuery,
-  WithdrawInput,
+  IsolatedMarginParams,
+  LeverageParams,
+  MarginModeParams,
+  OrderBookParams,
+  PlaceOrderParams,
+  SymbolParams,
+  TradesParams,
+  WithdrawParams,
 } from './contract';
 import type {
   GroupedOrder,
@@ -186,7 +186,7 @@ export interface LighterDexOptions extends Omit<InitOptions, 'signers'> {
  * `market` ⇒ IOC + expiration nulle ; `trigger` ⇒ `triggerPrice` requis (stop / take-profit).
  */
 const PLACE_ORDER_TYPE: Record<
-  PlaceOrderInput['type'],
+  PlaceOrderParams['type'],
   { native: number; market: boolean; trigger: boolean }
 > = {
   limit: { native: ORDER_TYPE.limit, market: false, trigger: false },
@@ -241,7 +241,7 @@ class LighterMarket
   public getPairs(): Promise<Pair[]> {
     return getPairs(this.client, this.label, this.kind);
   }
-  public async getCandles(query: CandlesQuery): Promise<Candle[]> {
+  public async getCandles(query: CandlesParams): Promise<Candle[]> {
     const meta = await this.markets.meta(query.name, this.kind, this.label);
     return getCandles(
       this.client,
@@ -257,7 +257,7 @@ class LighterMarket
       this.label,
     );
   }
-  public async getOrderBook(query: OrderBookQuery): Promise<OrderBook> {
+  public async getOrderBook(query: OrderBookParams): Promise<OrderBook> {
     const meta = await this.markets.meta(query.name, this.kind, this.label);
     return getOrderBook(
       this.client,
@@ -268,7 +268,7 @@ class LighterMarket
   public getPrices(): Promise<Price[]> {
     return getPrices(this.client, this.label, this.kind);
   }
-  public async getFundingHistory(query: FundingQuery): Promise<FundingRate[]> {
+  public async getFundingHistory(query: FundingParams): Promise<FundingRate[]> {
     const meta = await this.markets.meta(query.name, this.kind, this.label);
     return getFundingHistory(
       this.client,
@@ -289,20 +289,20 @@ class LighterMarket
   }
 
   // ── IPublicTrades ──
-  public async getTrades(query: TradesQuery): Promise<Trade[]> {
+  public async getTrades(query: TradesParams): Promise<Trade[]> {
     const meta = await this.markets.meta(query.name, this.kind, this.label);
     return getTrades(this.client, { marketId: meta.marketId, limit: query.limit }, this.label);
   }
 
   // ── IProductAccount ──
-  public async getPositions(query?: SymbolQuery): Promise<Position[]> {
+  public async getPositions(query?: SymbolParams): Promise<Position[]> {
     const positions = await getPositions(this.client, this.accountIndex(), this.label);
     return query?.name !== undefined ? positions.filter((p) => p.name === query.name) : positions;
   }
-  public async getOpenOrders(query?: SymbolQuery): Promise<Order[]> {
+  public async getOpenOrders(query?: SymbolParams): Promise<Order[]> {
     return this.fetchOrders(query, false);
   }
-  public async getUserTrades(query?: SymbolQuery): Promise<UserTrade[]> {
+  public async getUserTrades(query?: SymbolParams): Promise<UserTrade[]> {
     const accountIndex = this.accountIndex();
     const { auth } = await getAuthToken(this.client, this.label);
     const markets = await this.targetMarkets(query?.name);
@@ -322,12 +322,12 @@ class LighterMarket
   }
 
   // ── IOrderHistory ──
-  public async getOrderHistory(query?: SymbolQuery): Promise<Order[]> {
+  public async getOrderHistory(query?: SymbolParams): Promise<Order[]> {
     return this.fetchOrders(query, true);
   }
 
   /** Ordres actifs/inactifs, pour un marché donné ou tous les marchés où le compte a une activité. */
-  private async fetchOrders(query: SymbolQuery | undefined, inactive: boolean): Promise<Order[]> {
+  private async fetchOrders(query: SymbolParams | undefined, inactive: boolean): Promise<Order[]> {
     const accountIndex = this.accountIndex();
     const { auth } = await getAuthToken(this.client, this.label);
     const markets = await this.targetMarkets(query?.name);
@@ -364,7 +364,7 @@ class LighterMarket
   }
 
   // ── ITrading ──
-  public async placeOrder(input: PlaceOrderInput): Promise<Order> {
+  public async placeOrder(input: PlaceOrderParams): Promise<Order> {
     // Lighter supporte les 6 types du contrat → mapping vers les types natifs (pas de « non
     // supporté »). Les throws ci-dessous sont de la **validation d'input** (champ requis absent).
     const spec = PLACE_ORDER_TYPE[input.type];
@@ -416,17 +416,17 @@ class LighterMarket
       xtras: { txHash: result.txHash },
     };
   }
-  public async cancelOrder(input: CancelOrderInput): Promise<void> {
+  public async cancelOrder(input: CancelOrderParams): Promise<void> {
     const meta = await this.markets.meta(input.name, this.kind, this.label);
     const orderIndex = Number(input.id ?? input.clientId ?? 0);
     await cancelOrder(this.client, this.signed(), { marketIndex: meta.marketId, orderIndex });
   }
-  public async cancelAllOrders(_input: CancelAllInput): Promise<{ cancelled: number | null }> {
+  public async cancelAllOrders(_input: CancelAllParams): Promise<{ cancelled: number | null }> {
     // Lighter annule au niveau **compte** (pas par marché) ; il ne renvoie pas de compteur.
     await cancelAllOrders(this.client, this.signed());
     return { cancelled: null };
   }
-  public async editOrder(input: EditOrderInput): Promise<{ name: string; id: string }> {
+  public async editOrder(input: EditOrderParams): Promise<{ name: string; id: string }> {
     if (input.price === undefined) {
       throw new Error('editOrder (Lighter) : `price` est requis.');
     }
@@ -441,7 +441,7 @@ class LighterMarket
     });
     return { name: input.name, id: result.txHash };
   }
-  public async updateLeverage(input: LeverageInput): Promise<unknown> {
+  public async updateLeverage(input: LeverageParams): Promise<unknown> {
     const meta = await this.markets.meta(input.name, this.kind, this.label);
     const marginMode = await this.currentMarginMode(input.name);
     const fraction = Math.round(10_000 / Math.max(1, input.leverage));
@@ -453,7 +453,7 @@ class LighterMarket
   }
 
   // ── IMarginMode (mécanique cachée : Lighter passe par UpdateLeverage, comme HL) ──
-  public async setMarginMode(input: MarginModeInput): Promise<void> {
+  public async setMarginMode(input: MarginModeParams): Promise<void> {
     const meta = await this.markets.meta(input.name, this.kind, this.label);
     const positions = await getPositions(this.client, this.accountIndex(), this.label);
     const current = positions.find((p) => p.name === input.name);
@@ -477,7 +477,7 @@ class LighterMarket
   }
 
   // ── IIsolatedMargin / IRemovableMargin ──
-  public async addIsolatedMargin(input: IsolatedMarginInput): Promise<void> {
+  public async addIsolatedMargin(input: IsolatedMarginParams): Promise<void> {
     const meta = await this.markets.meta(input.name, this.kind, this.label);
     await updateMargin(this.client, this.signed(), {
       marketIndex: meta.marketId,
@@ -485,7 +485,7 @@ class LighterMarket
       direction: MARGIN_DIRECTION.add,
     });
   }
-  public async removeIsolatedMargin(input: IsolatedMarginInput): Promise<void> {
+  public async removeIsolatedMargin(input: IsolatedMarginParams): Promise<void> {
     const meta = await this.markets.meta(input.name, this.kind, this.label);
     await updateMargin(this.client, this.signed(), {
       marketIndex: meta.marketId,
@@ -527,7 +527,7 @@ class LighterAccount implements IAccount, ISubAccounts, IDeadManSwitch {
     }
     return getSubAccounts(this.client, signer.l1Address, this.label);
   }
-  public withdraw(input: WithdrawInput): Promise<unknown> {
+  public withdraw(input: WithdrawParams): Promise<unknown> {
     return withdraw(this.client, this.signed(), { amount: scaleToInt(input.amount, 6) });
   }
 

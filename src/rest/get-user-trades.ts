@@ -8,7 +8,7 @@ interface TradesEnvelope extends LighterEnvelope {
   trades?: NativeTrade[];
 }
 
-export interface UserTradesQuery {
+export interface UserTradesParams {
   accountIndex: number;
   marketId: number;
   /** Symbole, pour le converter. */
@@ -23,7 +23,7 @@ export interface UserTradesQuery {
 /** Exécutions (fills) d'un compte sur un marché (`/trades`, requiert `auth`). */
 export function getUserTrades(
   client: LighterClient,
-  query: UserTradesQuery,
+  query: UserTradesParams,
   label?: string,
 ): Promise<UserTrade[]> {
   return httpGet<TradesEnvelope>(

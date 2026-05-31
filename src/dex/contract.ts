@@ -25,32 +25,32 @@ import type { Unsubscribe } from '../common/ws';
 
 // ── Paramètres (sans `kind` : le scope le porte) ──────────────────────────────
 
-export interface CandlesQuery {
+export interface CandlesParams {
   name: string;
   interval: string;
   startTime?: number;
   endTime?: number;
   limit?: number;
 }
-export interface OrderBookQuery {
+export interface OrderBookParams {
   name: string;
   limit?: number;
 }
-export interface TradesQuery {
+export interface TradesParams {
   name: string;
   limit?: number;
 }
-export interface FundingQuery {
+export interface FundingParams {
   name: string;
   startTime?: number;
   endTime?: number;
   limit?: number;
 }
-export interface SymbolQuery {
+export interface SymbolParams {
   name: string;
 }
 
-export interface PlaceOrderInput {
+export interface PlaceOrderParams {
   name: string;
   side: 'buy' | 'sell';
   type: 'limit' | 'market' | 'stop' | 'stopMarket' | 'takeProfit' | 'takeProfitMarket';
@@ -61,15 +61,15 @@ export interface PlaceOrderInput {
   reduceOnly?: boolean;
   clientId?: string;
 }
-export interface CancelOrderInput {
+export interface CancelOrderParams {
   name: string;
   id?: string;
   clientId?: string;
 }
-export interface CancelAllInput {
+export interface CancelAllParams {
   name: string;
 }
-export interface EditOrderInput {
+export interface EditOrderParams {
   name: string;
   id?: string;
   clientId?: string;
@@ -77,19 +77,19 @@ export interface EditOrderInput {
   size: string;
   price?: string;
 }
-export interface LeverageInput {
+export interface LeverageParams {
   name: string;
   leverage: number;
 }
-export interface MarginModeInput {
+export interface MarginModeParams {
   name: string;
   isolated: boolean;
 }
-export interface IsolatedMarginInput {
+export interface IsolatedMarginParams {
   name: string;
   amount: string;
 }
-export interface WithdrawInput {
+export interface WithdrawParams {
   amount: string;
   address?: string;
   asset?: string;
@@ -101,10 +101,10 @@ export interface WithdrawInput {
 /** Données de marché publiques (les 3 DEX). */
 export interface IMarketData {
   getPairs(): Promise<Pair[]>;
-  getCandles(query: CandlesQuery): Promise<Candle[]>;
-  getOrderBook(query: OrderBookQuery): Promise<OrderBook>;
+  getCandles(query: CandlesParams): Promise<Candle[]>;
+  getOrderBook(query: OrderBookParams): Promise<OrderBook>;
   getPrices(): Promise<Price[]>;
-  getFundingHistory(query: FundingQuery): Promise<FundingRate[]>;
+  getFundingHistory(query: FundingParams): Promise<FundingRate[]>;
 }
 
 /** Métadonnées de marché du produit (infos d'échange, symboles…). */
@@ -114,46 +114,46 @@ export interface IMarketMeta {
 
 /** Historique de trades publics en REST (Aster, Pacifica — pas HL). */
 export interface IPublicTrades {
-  getTrades(query: TradesQuery): Promise<Trade[]>;
+  getTrades(query: TradesParams): Promise<Trade[]>;
 }
 
 /** Placement/annulation/édition d'ordres + levier (les 3 DEX). */
 export interface ITrading {
-  placeOrder(input: PlaceOrderInput): Promise<Order>;
-  cancelOrder(input: CancelOrderInput): Promise<void>;
-  cancelAllOrders(input: CancelAllInput): Promise<{ cancelled: number | null }>;
-  editOrder(input: EditOrderInput): Promise<{ name: string; id: string }>;
-  updateLeverage(input: LeverageInput): Promise<unknown>;
+  placeOrder(input: PlaceOrderParams): Promise<Order>;
+  cancelOrder(input: CancelOrderParams): Promise<void>;
+  cancelAllOrders(input: CancelAllParams): Promise<{ cancelled: number | null }>;
+  editOrder(input: EditOrderParams): Promise<{ name: string; id: string }>;
+  updateLeverage(input: LeverageParams): Promise<unknown>;
 }
 
 /** Mode de marge cross/isolated (les 3 ; HL le traduit en updateLeverage(isCross)). */
 export interface IMarginMode {
-  setMarginMode(input: MarginModeInput): Promise<void>;
+  setMarginMode(input: MarginModeParams): Promise<void>;
 }
 
 /** Ajout de marge isolée (les 3 DEX). */
 export interface IIsolatedMargin {
-  addIsolatedMargin(input: IsolatedMarginInput): Promise<void>;
+  addIsolatedMargin(input: IsolatedMarginParams): Promise<void>;
 }
 
 /** Retrait de marge isolée (Aster, HL — pas Pacifica). */
 export interface IRemovableMargin {
-  removeIsolatedMargin(input: IsolatedMarginInput): Promise<void>;
+  removeIsolatedMargin(input: IsolatedMarginParams): Promise<void>;
 }
 
 // ── Compte PAR PRODUIT (retourné par perp() / spot()) ─────────────────────────
 
 /** Lectures de compte liées au produit (perp ou spot), portées par le scope marché. */
 export interface IProductAccount {
-  getPositions(query?: SymbolQuery): Promise<Position[]>;
-  getOpenOrders(query?: SymbolQuery): Promise<Order[]>;
-  getUserTrades(query?: SymbolQuery): Promise<UserTrade[]>;
+  getPositions(query?: SymbolParams): Promise<Position[]>;
+  getOpenOrders(query?: SymbolParams): Promise<Order[]>;
+  getUserTrades(query?: SymbolParams): Promise<UserTrade[]>;
   getAccountInfo(): Promise<unknown>;
 }
 
 /** Historique des ordres du produit (Aster, Pacifica — pas HL). */
 export interface IOrderHistory {
-  getOrderHistory(query?: SymbolQuery): Promise<Order[]>;
+  getOrderHistory(query?: SymbolParams): Promise<Order[]>;
 }
 
 // ── Capacités COMPTE TRANSVERSE (retournées par account()) ────────────────────
@@ -161,7 +161,7 @@ export interface IOrderHistory {
 /** Compte transverse (sans notion de produit) : soldes + retrait (les 3 DEX). */
 export interface IAccount {
   getBalances(): Promise<Balance[]>;
-  withdraw(input: WithdrawInput): Promise<unknown>;
+  withdraw(input: WithdrawParams): Promise<unknown>;
 }
 
 /** Liste des sous-comptes (Aster, Pacifica — pas HL). */

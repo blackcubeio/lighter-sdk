@@ -10,7 +10,7 @@ interface CandlesEnvelope extends LighterEnvelope {
 }
 
 /** Paramètres natifs (le `name`/`interval` servent au converter ; `marketId`/timestamps au wire). */
-export interface GetCandlesQuery {
+export interface GetCandlesParams {
   marketId: number;
   name: string;
   interval: string;
@@ -33,7 +33,7 @@ const toSeconds = (ms: number): number => Math.floor(ms / 1000);
  */
 export function getCandles(
   client: LighterClient,
-  query: GetCandlesQuery,
+  query: GetCandlesParams,
   label?: string,
 ): Promise<Candle[]> {
   const countBack = query.limit ?? 100;
