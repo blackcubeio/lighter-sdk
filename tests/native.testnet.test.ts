@@ -41,7 +41,7 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
     dex = new Lighter({ desk: signer }, { default: 'desk' });
   });
 
-  it('native.advancedOrders().placeBatch() : chemin TX 28 signé sur testnet', async () => {
+  it('perp().placeBatch() : chemin TX 28 signé sur testnet', async () => {
     // TX 28 = ordres GROUPÉS (OCO/OTO/OTOCO) : grammaire parent/enfant stricte côté protocole.
     // On exerce le **chemin de signature TX 28** (WASM officiel recompilé) sur testnet réel : on
     // accepte un succès OU un rejet **structurel métier** (grouping/ordre), jamais un échec de
@@ -49,7 +49,7 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
     const ref = Number((await dex.perp().getPrices()).find((p) => p.name === 'BTC')?.last ?? 0);
     expect(ref).toBeGreaterThan(0);
     try {
-      const res = await dex.native.advancedOrders().placeBatch(
+      const res = await dex.perp().placeBatch(
         [
           { name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: (ref * 0.5).toFixed(1) },
           {
@@ -64,7 +64,7 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
       );
       console.log('grouped orders txHash:', res.txHash);
       expect(res.txHash).toBeTruthy();
-      await dex.perp().cancelAllOrders({ name: 'BTC' });
+      await dex.perp().cancelAll({ name: 'BTC' });
     } catch (e) {
       const msg = String((e as Error).message);
       console.log('grouped orders rejet structurel (TX 28 atteinte):', msg);

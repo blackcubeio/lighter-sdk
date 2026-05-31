@@ -39,14 +39,9 @@ await dex.native.apiKeys().authToken(3600);
 await dex.native.subAccounts().create();
 ```
 
-## `native.transfers()` — `ITransfers` (transfert de collatéral entre comptes)
-| Méthode | Entrée | Sortie |
-|---|---|---|
-| `transfer(input)` | `Transfer` `{ toAccountIndex; amount; memo? }` | `Promise<TxResult>` |
-
-```ts
-await dex.native.transfers().transfer({ toAccountIndex: 42, amount: '10.5' });
-```
+> **Transferts** : `transfers()` est désormais un scope **commun** (`dex.transfers()`), plus dans
+> `native`. Modèle unifié `transfer({ from?, to, asset?, amount })` — Lighter ne supporte que
+> `to: { account: '<index>' }`. Voir `doc/common.md`.
 
 ## `native.pools()` — `IPools` (public pools / LP)
 *(verbes alignés `create`/`update` + métier `mint`/`burn`.)*
@@ -64,14 +59,15 @@ await dex.native.pools().mint({ publicPoolIndex: 3, shareAmount: 1000 });
 await dex.native.pools().burn({ publicPoolIndex: 3, shareAmount: 500 });
 ```
 
-## `native.advancedOrders()` — `IAdvancedOrders` (ordres groupés, TX 28)
-*(verbe aligné `placeBatch` ; `groupingType` : 0 = lot indépendant, autres = OCO/bracket. La façade résout marché + scaling par leg.)*
+## Surplus ordres — `INativeOrders`, porté par `perp()` / `spot()` (ordres groupés, TX 28)
+*(pas de scope `native` dédié : exposé sur le scope marché. Verbe aligné `placeBatch` ; `groupingType` :
+0 = lot indépendant, autres = OCO/bracket. La façade résout marché + scaling par leg.)*
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `placeBatch(orders, groupingType?)` | `GroupedOrder[]` `{ name; side; type; size; price; tif?; reduceOnly?; triggerPrice?; clientId? }` | `Promise<TxResult>` |
 
 ```ts
-await dex.native.advancedOrders().placeBatch([
+await dex.perp().placeBatch([
   { name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '30000', tif: 'alo' },
   { name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '29000', tif: 'alo' },
 ]);
@@ -126,8 +122,8 @@ await dex.native.accountConfig().updateAsset({ assetIndex: 0, assetMarginMode: 1
 ---
 
 > **Validation** (`tests/native.testnet.test.ts`, testnet réel) :
-> - **testé** : `apiKeys` (generate/nextNonce/authToken), `advancedOrders.placeBatch` (chemin TX 28
+> - **testé** : `apiKeys` (generate/nextNonce/authToken), `perp().placeBatch` (chemin TX 28
 >   signé — WASM officiel), `marketData.fundingRates` (public), `account` (liquidations/positionFunding/pnl,
 >   authentifiés).
 > - **préparées + documentées, testées manuellement** (écritures à effet de bord / création de ressource) :
->   `subAccounts.create`, `transfers.transfer`, `pools.*`, `staking.*`, `accountConfig.*`.
+>   `subAccounts.create`, `transfers().transfer` (commun), `pools.*`, `staking.*`, `accountConfig.*`.

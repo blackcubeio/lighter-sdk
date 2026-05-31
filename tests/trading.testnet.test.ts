@@ -59,7 +59,7 @@ describe.skipIf(!ready)('Lighter — trading testnet réel (compte main)', () =>
     expect(ref).toBeGreaterThan(0);
     const farPrice = (ref * 0.5).toFixed(1); // 50 % sous le marché → ne s'exécute pas
 
-    const order = await dex.perp().placeOrder({
+    const order = await dex.perp().place({
       name: 'BTC',
       side: 'buy',
       type: 'limit',
@@ -73,14 +73,14 @@ describe.skipIf(!ready)('Lighter — trading testnet réel (compte main)', () =>
     expect(order.status).toBe('open');
 
     await new Promise((r) => setTimeout(r, 2000));
-    const open = await dex.perp().getOpenOrders({ name: 'BTC' });
+    const open = await dex.perp().getOpens({ name: 'BTC' });
     console.log('ordres ouverts BTC:', open.length, JSON.stringify(open[0] ?? null));
 
-    const cancelled = await dex.perp().cancelAllOrders({ name: 'BTC' });
+    const cancelled = await dex.perp().cancelAll({ name: 'BTC' });
     console.log('cancelAll:', JSON.stringify(cancelled));
 
     await new Promise((r) => setTimeout(r, 2000));
-    const after = await dex.perp().getOpenOrders({ name: 'BTC' });
+    const after = await dex.perp().getOpens({ name: 'BTC' });
     console.log('ordres ouverts BTC après annulation:', after.length);
   });
 

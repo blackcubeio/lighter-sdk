@@ -119,10 +119,10 @@ export interface IPublicTrades {
 
 /** Placement/annulation/édition d'ordres + levier (les 3 DEX). */
 export interface ITrading {
-  placeOrder(input: PlaceOrderParams): Promise<Order>;
-  cancelOrder(input: CancelOrderParams): Promise<void>;
-  cancelAllOrders(input: CancelAllParams): Promise<{ cancelled: number | null }>;
-  editOrder(input: EditOrderParams): Promise<{ name: string; id: string }>;
+  place(input: PlaceOrderParams): Promise<Order>;
+  cancel(input: CancelOrderParams): Promise<void>;
+  cancelAll(input: CancelAllParams): Promise<{ cancelled: number | null }>;
+  edit(input: EditOrderParams): Promise<{ name: string; id: string }>;
   updateLeverage(input: LeverageParams): Promise<unknown>;
 }
 
@@ -146,14 +146,14 @@ export interface IRemovableMargin {
 /** Lectures de compte liées au produit (perp ou spot), portées par le scope marché. */
 export interface IProductAccount {
   getPositions(query?: SymbolParams): Promise<Position[]>;
-  getOpenOrders(query?: SymbolParams): Promise<Order[]>;
+  getOpens(query?: SymbolParams): Promise<Order[]>;
   getUserTrades(query?: SymbolParams): Promise<UserTrade[]>;
   getAccountInfo(): Promise<unknown>;
 }
 
 /** Historique des ordres du produit (Aster, Pacifica — pas HL). */
 export interface IOrderHistory {
-  getOrderHistory(query?: SymbolParams): Promise<Order[]>;
+  getHistory(query?: SymbolParams): Promise<Order[]>;
 }
 
 // ── Capacités COMPTE TRANSVERSE (retournées par account()) ────────────────────

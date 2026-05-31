@@ -58,33 +58,33 @@ await dex.perp().getTrades({ name: 'BTC', limit: 50 });
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `getPositions(q?)` | `SymbolQuery?` | `Promise<Position[]>` |
-| `getOpenOrders(q?)` | `SymbolQuery?` | `Promise<Order[]>` |
+| `getOpens(q?)` | `SymbolQuery?` | `Promise<Order[]>` |
 | `getUserTrades(q?)` | `SymbolQuery?` | `Promise<UserTrade[]>` |
 | `getAccountInfo()` | — | `Promise<unknown>` |
-| `getOrderHistory(q?)` | `SymbolQuery?` | `Promise<Order[]>` |
+| `getHistory(q?)` | `SymbolQuery?` | `Promise<Order[]>` |
 
 ```ts
 await dex.perp().getPositions();
-await dex.perp().getOpenOrders({ name: 'BTC' });
+await dex.perp().getOpens({ name: 'BTC' });
 await dex.perp().getUserTrades({ name: 'BTC' });
 await dex.perp().getAccountInfo();
-await dex.perp().getOrderHistory({ name: 'BTC' });
+await dex.perp().getHistory({ name: 'BTC' });
 ```
 
 ### Trading — `ITrading`
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `placeOrder(i)` | `PlaceOrderInput` | `Promise<Order>` |
-| `cancelOrder(i)` | `CancelOrderInput` | `Promise<void>` |
-| `cancelAllOrders(i)` | `CancelAllInput` | `Promise<{ cancelled: number \| null }>` |
-| `editOrder(i)` | `EditOrderInput` | `Promise<{ name: string; id: string }>` |
+| `place(i)` | `PlaceOrderInput` | `Promise<Order>` |
+| `cancel(i)` | `CancelOrderInput` | `Promise<void>` |
+| `cancelAll(i)` | `CancelAllInput` | `Promise<{ cancelled: number \| null }>` |
+| `edit(i)` | `EditOrderInput` | `Promise<{ name: string; id: string }>` |
 | `updateLeverage(i)` | `LeverageInput` | `Promise<unknown>` |
 
 ```ts
-await dex.perp().placeOrder({ name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '50000' });
-await dex.perp().cancelOrder({ name: 'BTC', id: '12345' });
-await dex.perp().cancelAllOrders({ name: 'BTC' });
-await dex.perp().editOrder({ name: 'BTC', id: '12345', side: 'buy', size: '0.002', price: '49000' });
+await dex.perp().place({ name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '50000' });
+await dex.perp().cancel({ name: 'BTC', id: '12345' });
+await dex.perp().cancelAll({ name: 'BTC' });
+await dex.perp().edit({ name: 'BTC', id: '12345', side: 'buy', size: '0.002', price: '49000' });
 await dex.perp().updateLeverage({ name: 'BTC', leverage: 10 });
 ```
 
@@ -119,6 +119,24 @@ await dex.account().withdraw({ amount: '100' });
 await dex.account().getSubAccounts();
 await dex.account().armCancelAll(60_000); // dead-man-switch : annule tout dans 60 s sauf rafraîchi
 await dex.account().disarm();
+```
+
+---
+
+## `transfers(label?)` — transferts de fonds (commun)
+Modèle **unifié** : `transfer({ from?, to, asset?, amount })`. Chaque extrémité est un `TransferEndpoint` :
+`{ wallet: 'perp' | 'spot' }` · `{ account: string }` · `{ subAccount: string }`. La façade route vers
+l'endpoint natif selon `(from, to)` ; une route non supportée lève une erreur explicite.
+
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `transfer(p)` | `TransferParams` `{ from?: TransferEndpoint; to: TransferEndpoint; asset?: string; amount: string }` | `Promise<unknown>` |
+
+Routes **Lighter** : `to: { account: '<index>' }` uniquement (transfert de collatéral vers un autre
+compte par index ; `amount` en USDC).
+
+```ts
+await dex.transfers().transfer({ to: { account: '42' }, amount: '10.5' });
 ```
 
 ---

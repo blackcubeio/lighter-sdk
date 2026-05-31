@@ -85,10 +85,10 @@ import type {
 import type {
   GroupedOrder,
   IAccountConfig,
-  IAdvancedOrders,
   IApiKeys,
   INativeAccount,
   INativeMarket,
+  INativeOrders,
   IPools,
   IStaking,
   ISubAccountsAdmin,
@@ -211,6 +211,7 @@ class LighterMarket
     IProductAccount,
     IOrderHistory,
     ITrading,
+    INativeOrders,
     IMarginMode,
     IIsolatedMargin,
     IRemovableMargin
@@ -299,7 +300,7 @@ class LighterMarket
     const positions = await getPositions(this.client, this.accountIndex(), this.label);
     return query?.name !== undefined ? positions.filter((p) => p.name === query.name) : positions;
   }
-  public async getOpenOrders(query?: SymbolParams): Promise<Order[]> {
+  public async getOpens(query?: SymbolParams): Promise<Order[]> {
     return this.fetchOrders(query, false);
   }
   public async getUserTrades(query?: SymbolParams): Promise<UserTrade[]> {
@@ -322,7 +323,7 @@ class LighterMarket
   }
 
   // ── IOrderHistory ──
-  public async getOrderHistory(query?: SymbolParams): Promise<Order[]> {
+  public async getHistory(query?: SymbolParams): Promise<Order[]> {
     return this.fetchOrders(query, true);
   }
 
@@ -364,18 +365,18 @@ class LighterMarket
   }
 
   // ── ITrading ──
-  public async placeOrder(input: PlaceOrderParams): Promise<Order> {
+  public async place(input: PlaceOrderParams): Promise<Order> {
     // Lighter supporte les 6 types du contrat → mapping vers les types natifs (pas de « non
     // supporté »). Les throws ci-dessous sont de la **validation d'input** (champ requis absent).
     const spec = PLACE_ORDER_TYPE[input.type];
     if (input.price === undefined) {
       throw new Error(
-        'placeOrder (Lighter) : `price` est requis (prix limite ou borne de protection en market).',
+        'place (Lighter) : `price` est requis (prix limite ou borne de protection en market).',
       );
     }
     if (spec.trigger && input.triggerPrice === undefined) {
       throw new Error(
-        `placeOrder (Lighter) : \`triggerPrice\` est requis pour un ordre "${input.type}".`,
+        `place (Lighter) : \`triggerPrice\` est requis pour un ordre "${input.type}".`,
       );
     }
     const meta = await this.markets.meta(input.name, this.kind, this.label);
@@ -416,19 +417,19 @@ class LighterMarket
       xtras: { txHash: result.txHash },
     };
   }
-  public async cancelOrder(input: CancelOrderParams): Promise<void> {
+  public async cancel(input: CancelOrderParams): Promise<void> {
     const meta = await this.markets.meta(input.name, this.kind, this.label);
     const orderIndex = Number(input.id ?? input.clientId ?? 0);
     await cancelOrder(this.client, this.signed(), { marketIndex: meta.marketId, orderIndex });
   }
-  public async cancelAllOrders(_input: CancelAllParams): Promise<{ cancelled: number | null }> {
+  public async cancelAll(_input: CancelAllParams): Promise<{ cancelled: number | null }> {
     // Lighter annule au niveau **compte** (pas par marché) ; il ne renvoie pas de compteur.
     await cancelAllOrders(this.client, this.signed());
     return { cancelled: null };
   }
-  public async editOrder(input: EditOrderParams): Promise<{ name: string; id: string }> {
+  public async edit(input: EditOrderParams): Promise<{ name: string; id: string }> {
     if (input.price === undefined) {
-      throw new Error('editOrder (Lighter) : `price` est requis.');
+      throw new Error('edit (Lighter) : `price` est requis.');
     }
     const meta = await this.markets.meta(input.name, this.kind, this.label);
     const index = Number(input.id ?? input.clientId ?? 0);
@@ -492,6 +493,37 @@ class LighterMarket
       usdcAmount: scaleToInt(input.amount, 6),
       direction: MARGIN_DIRECTION.remove,
     });
+  }
+
+  // ── INativeOrders : ordres groupés (TX 28, OCO/bracket) portés par le scope marché ──
+  public async placeBatch(orders: GroupedOrder[], groupingType = 0): Promise<SendTxResult> {
+    const legs = await Promise.all(
+      orders.map(async (o) => {
+        const spec = PLACE_ORDER_TYPE[o.type];
+        const meta = await this.markets.meta(o.name, 'perp', this.label);
+        const tif = spec.market
+          ? TIF.ioc
+          : o.tif === 'ioc'
+            ? TIF.ioc
+            : o.tif === 'alo'
+              ? TIF.alo
+              : TIF.gtt;
+        return {
+          marketIndex: meta.marketId,
+          clientOrderIndex: o.clientId !== undefined ? Number(o.clientId) : 0,
+          baseAmount: scaleToInt(o.size, meta.sizeDecimals),
+          price: scaleToInt(o.price, meta.priceDecimals),
+          isAsk: o.side === 'sell' ? 1 : 0,
+          orderType: spec.native,
+          timeInForce: tif,
+          reduceOnly: o.reduceOnly === true ? 1 : 0,
+          triggerPrice:
+            o.triggerPrice !== undefined ? scaleToInt(o.triggerPrice, meta.priceDecimals) : 0,
+          orderExpiry: tif === TIF.ioc ? 0 : -1,
+        };
+      }),
+    );
+    return createGroupedOrders(this.client, this.signed(), { groupingType, orders: legs });
   }
 }
 
@@ -789,47 +821,6 @@ class LighterAccountConfig extends LighterScope implements IAccountConfig {
   }
 }
 
-/** Scope **advancedOrders** : ordres groupés (TX 28) — {@link IAdvancedOrders}. */
-class LighterAdvancedOrders extends LighterScope implements IAdvancedOrders {
-  constructor(
-    client: LighterClient,
-    label: string | undefined,
-    private readonly markets: MarketsResolver,
-  ) {
-    super(client, label);
-  }
-
-  public async placeBatch(orders: GroupedOrder[], groupingType = 0): Promise<SendTxResult> {
-    const legs = await Promise.all(
-      orders.map(async (o) => {
-        const spec = PLACE_ORDER_TYPE[o.type];
-        const meta = await this.markets.meta(o.name, 'perp', this.label);
-        const tif = spec.market
-          ? TIF.ioc
-          : o.tif === 'ioc'
-            ? TIF.ioc
-            : o.tif === 'alo'
-              ? TIF.alo
-              : TIF.gtt;
-        return {
-          marketIndex: meta.marketId,
-          clientOrderIndex: o.clientId !== undefined ? Number(o.clientId) : 0,
-          baseAmount: scaleToInt(o.size, meta.sizeDecimals),
-          price: scaleToInt(o.price, meta.priceDecimals),
-          isAsk: o.side === 'sell' ? 1 : 0,
-          orderType: spec.native,
-          timeInForce: tif,
-          reduceOnly: o.reduceOnly === true ? 1 : 0,
-          triggerPrice:
-            o.triggerPrice !== undefined ? scaleToInt(o.triggerPrice, meta.priceDecimals) : 0,
-          orderExpiry: tif === TIF.ioc ? 0 : -1,
-        };
-      }),
-    );
-    return createGroupedOrders(this.client, this.signed(), { groupingType, orders: legs });
-  }
-}
-
 /** Scope **marketData** : données de marché supplémentaires publiques — {@link INativeMarket}. */
 class LighterMarketData extends LighterScope implements INativeMarket {
   public fundingRates() {
@@ -870,9 +861,9 @@ class LighterAccountExtra extends LighterScope implements INativeAccount {
 /**
  * Façade **Lighter** : `const dex = new Lighter({ deskA: signer }, { default: 'deskA' })`, puis
  * `dex.perp(label?)` / `dex.spot(label?)` (marché perp / spot), `dex.account(label?)` (compte),
- * `dex.ws(label?)` / `dex.wsSpot(label?)` (temps réel). Surplus spécifique via `dex.native.<cap>()` :
- * `apiKeys`, `subAccounts`, `transfers`, `pools`, `staking`, `accountConfig`, `advancedOrders`,
- * `marketData`, `account`.
+ * `dex.ws(label?)` / `dex.wsSpot(label?)` (temps réel). `dex.transfers()` (transferts unifiés).
+ * Surplus spécifique via `dex.native.<cap>()` : `apiKeys`, `subAccounts`, `pools`, `staking`,
+ * `accountConfig`, `marketData`, `account`. (Les ordres groupés `placeBatch` sont sur `perp()`/`spot()`.)
  *
  * Chaque instance détient son propre {@link LighterClient} (config isolée). Le **signer WASM**
  * est instancié **une fois par réseau** (lazy au 1er appel signé), donc mainnet et testnet
@@ -960,8 +951,6 @@ export class Lighter {
       staking: (label?: string) => new LighterStaking(c, r(label)),
       /** Mode de trading + activation d'un actif comme marge — `IAccountConfig`. */
       accountConfig: (label?: string) => new LighterAccountConfig(c, r(label)),
-      /** Ordres groupés (TX 28, OCO/bracket) — `IAdvancedOrders`. */
-      advancedOrders: (label?: string) => new LighterAdvancedOrders(c, r(label), this.markets),
       /** Données de marché supplémentaires (funding-rates courants) — `INativeMarket`. */
       marketData: (label?: string) => new LighterMarketData(c, r(label)),
       /** Lectures de compte étendues (liquidations, positionFunding, pnl) — `INativeAccount`. */

@@ -47,8 +47,11 @@ export interface GroupedOrder {
   clientId?: string;
 }
 
-/** Ordres groupés (TX 28, OCO/bracket). Verbe aligné `placeBatch` (HL/Aster/Pacifica). */
-export interface IAdvancedOrders {
+/**
+ * Surplus **ordres** Lighter, porté par le scope marché (`perp()`/`spot()`) : ordres groupés
+ * (TX 28, OCO/bracket). Verbe aligné `placeBatch` (HL/Aster/Pacifica).
+ */
+export interface INativeOrders {
   /** `groupingType` : 0 = aucun, autres valeurs = OCO/bracket selon le protocole. */
   placeBatch(orders: GroupedOrder[], groupingType?: number): Promise<TxResult>;
 }
