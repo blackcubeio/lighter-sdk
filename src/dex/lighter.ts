@@ -4,12 +4,15 @@ import type {
   Balance,
   Candle,
   FundingRate,
+  Liquidation,
   MarketKind,
   Network,
   Order,
   OrderBook,
   Pair,
+  PnlPoint,
   Position,
+  PositionFundingEntry,
   Price,
   Signer,
   SubAccount,
@@ -18,6 +21,11 @@ import type {
 } from '../common/types';
 import { dateToMs, scaleToInt } from '../common/utils';
 import type { Unsubscribe } from '../common/ws';
+import { FundingRateConverter } from '../converters/funding-rate';
+import { GroupedOrderConverter } from '../converters/grouped-order';
+import { LiquidationConverter } from '../converters/liquidation';
+import { PnlConverter } from '../converters/pnl';
+import { PositionFundingConverter } from '../converters/position-funding';
 import { updateAccountAssetConfig, updateAccountConfig } from '../rest/account-config';
 import { getActiveOrders, getInactiveOrders } from '../rest/account-orders';
 import { getAuthToken } from '../rest/auth';
@@ -149,6 +157,13 @@ class MarketsResolver {
   /** Tous les marchés d'un type donné. */
   async ofKind(kind: MarketKind, label?: string): Promise<MarketMeta[]> {
     return (await this.all(label)).filter((m) => m.kind === kind);
+  }
+
+  /** Résolveur `market_id → name` (pour les converters d'endpoints multi-marchés). */
+  async nameOf(label?: string): Promise<(marketId: number) => string> {
+    const all = await this.all(label);
+    const byId = new Map<number, string>(all.map((m) => [m.marketId, m.name]));
+    return (marketId: number) => byId.get(marketId) ?? String(marketId);
   }
 }
 
@@ -786,11 +801,14 @@ class LighterNativePerp extends LighterScope implements INativePerp {
     super(client, label);
   }
 
-  public getFundingRates() {
-    return getFundingRates(this.client, this.label);
+  public getFundingRates(): Promise<FundingRate[]> {
+    const converter = new FundingRateConverter();
+    return getFundingRates(this.client, this.label).then((env) =>
+      (env.funding_rates ?? []).map((r) => converter.toCommon(r)),
+    );
   }
 
-  public async placeBatch(orders: GroupedOrder[], groupingType = 0): Promise<SendTxResult> {
+  public async placeBatch(orders: GroupedOrder[], groupingType = 0): Promise<Order[]> {
     const legs = await Promise.all(
       orders.map(async (o) => {
         const spec = PLACE_ORDER_TYPE[o.type];
@@ -817,7 +835,11 @@ class LighterNativePerp extends LighterScope implements INativePerp {
         };
       }),
     );
-    return createGroupedOrders(this.client, this.signed(), { groupingType, orders: legs });
+    const tx = await createGroupedOrders(this.client, this.signed(), {
+      groupingType,
+      orders: legs,
+    });
+    return new GroupedOrderConverter('perp').toCommon(orders, tx);
   }
 }
 
@@ -826,21 +848,45 @@ class LighterNativePerp extends LighterScope implements INativePerp {
  * (absorbe l'ex-`accountConfig`) — {@link INativeAccount}.
  */
 class LighterAccountExtra extends LighterScope implements INativeAccount {
-  public async getLiquidations(query?: { limit?: number; marketId?: number }) {
-    const { auth } = await getAuthToken(this.client, this.signed());
-    return getLiquidations(
-      this.client,
-      { accountIndex: this.accountIndex(), auth, ...query },
-      this.label,
-    );
+  constructor(
+    client: LighterClient,
+    label: string | undefined,
+    private readonly markets: MarketsResolver,
+  ) {
+    super(client, label);
   }
-  public async getPositionFunding(query?: { limit?: number; marketId?: number }) {
+
+  public async getLiquidations(query?: {
+    limit?: number;
+    marketId?: number;
+  }): Promise<Liquidation[]> {
     const { auth } = await getAuthToken(this.client, this.signed());
-    return getPositionFunding(
-      this.client,
-      { accountIndex: this.accountIndex(), auth, ...query },
-      this.label,
-    );
+    const [env, nameOf] = await Promise.all([
+      getLiquidations(
+        this.client,
+        { accountIndex: this.accountIndex(), auth, ...query },
+        this.label,
+      ),
+      this.markets.nameOf(this.label),
+    ]);
+    const converter = new LiquidationConverter(nameOf);
+    return (env.liquidations ?? []).map((l) => converter.toCommon(l));
+  }
+  public async getPositionFunding(query?: {
+    limit?: number;
+    marketId?: number;
+  }): Promise<PositionFundingEntry[]> {
+    const { auth } = await getAuthToken(this.client, this.signed());
+    const [env, nameOf] = await Promise.all([
+      getPositionFunding(
+        this.client,
+        { accountIndex: this.accountIndex(), auth, ...query },
+        this.label,
+      ),
+      this.markets.nameOf(this.label),
+    ]);
+    const converter = new PositionFundingConverter(nameOf);
+    return (env.position_fundings ?? []).map((p) => converter.toCommon(p));
   }
   public async getPnl(query: {
     resolution: string;
@@ -848,9 +894,15 @@ class LighterAccountExtra extends LighterScope implements INativeAccount {
     endTime: number;
     countBack?: number;
     ignoreTransfers?: boolean;
-  }) {
+  }): Promise<PnlPoint[]> {
     const { auth } = await getAuthToken(this.client, this.signed());
-    return getPnl(this.client, { accountIndex: this.accountIndex(), auth, ...query }, this.label);
+    const env = await getPnl(
+      this.client,
+      { accountIndex: this.accountIndex(), auth, ...query },
+      this.label,
+    );
+    const converter = new PnlConverter();
+    return (env.pnl ?? []).map((p) => converter.toCommon(p));
   }
   public updateSettings(params: Parameters<typeof updateAccountConfig>[2]): Promise<SendTxResult> {
     return updateAccountConfig(this.client, this.signed(), params);
@@ -950,7 +1002,7 @@ export class Lighter {
       /** Surplus **perp** (miroir natif de perp()) : funding-rates + ordres groupés (TX 28). */
       perp: (label?: string) => new LighterNativePerp(c, r(label), this.markets),
       /** Lectures de compte étendues + config (updateSettings/updateAssetConfig) — `INativeAccount`. */
-      account: (label?: string) => new LighterAccountExtra(c, r(label)),
+      account: (label?: string) => new LighterAccountExtra(c, r(label), this.markets),
       /** Signature : génération de clé API, nonce, token d'auth — `ISigning`. */
       signing: (label?: string) => new LighterSigning(c, r(label)),
       /** Création de sous-comptes — `ISubAccountsAdmin`. */

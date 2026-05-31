@@ -1,10 +1,10 @@
 import type { LighterClient } from '../common/config';
-import type { LighterEnvelope } from '../common/native';
+import type { LighterEnvelope, NativePnlEntry } from '../common/native';
 import type { QueryParams } from '../common/types';
 import { httpGet } from './client';
 
 export interface PnlEnvelope extends LighterEnvelope {
-  pnl?: unknown;
+  pnl?: NativePnlEntry[];
 }
 
 /** Courbe de PnL d'un compte (`/pnl`, requiert `auth` pour un compte principal). */

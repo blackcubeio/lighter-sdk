@@ -72,8 +72,8 @@ marché + scaling par leg.)
 
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `getFundingRates()` | — | `Promise<{ funding_rates }>` (taux courants par marché/exchange, public) |
-| `placeBatch(orders, groupingType?)` | `GroupedOrder[]` `{ name; side; type; size; price; tif?; reduceOnly?; triggerPrice?; clientId? }` | `Promise<TxResult>` |
+| `getFundingRates()` | — | `Promise<FundingRate[]>` (type commun ; taux **courants** par marché, public ; `exchange` en `xtras`) |
+| `placeBatch(orders, groupingType?)` | `GroupedOrder[]` `{ name; side; type; size; price; tif?; reduceOnly?; triggerPrice?; clientId? }` | `Promise<Order[]>` (type commun, 1 `Order` par leg ; `id` vide / `status: 'open'`, `txHash` en `xtras` — TX 28 ne renvoie pas de statut par leg) |
 
 ```ts
 await dex.native.perp().getFundingRates();
@@ -87,9 +87,9 @@ await dex.native.perp().placeBatch([
 *(`accountIndex` + token `auth` injectés par le scope. Absorbe l'ex-`accountConfig`.)*
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `getLiquidations(q?)` | `{ limit?; marketId? }` | `Promise<{ liquidations }>` |
-| `getPositionFunding(q?)` | `{ limit?; marketId? }` | `Promise<{ position_fundings }>` |
-| `getPnl(q)` | `PnlParams` `{ resolution; startTime; endTime; countBack?; ignoreTransfers? }` | `Promise<{ pnl }>` |
+| `getLiquidations(q?)` | `{ limit?; marketId? }` | `Promise<Liquidation[]>` (interface dédiée : `name`/`id`/`side`/`size`/`price`/`fee`/`type`/`time`) |
+| `getPositionFunding(q?)` | `{ limit?; marketId? }` | `Promise<PositionFundingEntry[]>` (interface dédiée : `name`/`side`/`size`/`fundingRate`/`pnl`/`time`) |
+| `getPnl(q)` | `PnlParams` `{ resolution; startTime; endTime; countBack?; ignoreTransfers? }` | `Promise<PnlPoint[]>` (interface dédiée : `time`/`pnl` ; composantes pool/staking/volume en `xtras`) |
 | `updateSettings(p)` | `UpdateSettingsParams` `{ accountTradingMode }` | `Promise<TxResult>` |
 | `updateAssetConfig(p)` | `UpdateAssetConfigParams` `{ assetIndex; assetMarginMode }` | `Promise<TxResult>` |
 

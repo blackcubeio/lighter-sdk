@@ -256,5 +256,18 @@ interface Balance { asset: string; total: string; available: string | null; usdV
 
 interface SubAccount { address: string; xtras?: Record<string, unknown> }
 
+// Résultat d'une écriture signée (TX `/sendTx`) : hash + enveloppe brute (rien jeté).
+interface TxResult { txHash: string; raw: Record<string, unknown> }
+
+// Interfaces dédiées **nommées** du namespace `native` (pas d'équivalent commun inter-SDK ;
+// champs aux mêmes noms que le cœur). Cf. doc/native.md.
+interface Liquidation { name: string; id: string | null; side: Side | null; size: string | null;
+  price: string | null; fee: string | null; type: string | null; time: number; xtras?: Record<string, unknown> }
+
+interface PositionFundingEntry { name: string; side: 'long' | 'short' | null; size: string | null;
+  fundingRate: string | null; pnl: string | null; time: number; xtras?: Record<string, unknown> }
+
+interface PnlPoint { time: number; pnl: string | null; xtras?: Record<string, unknown> }
+
 type Unsubscribe = () => void;
 ```

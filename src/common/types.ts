@@ -311,6 +311,69 @@ export interface FundingRate {
   xtras?: Record<string, unknown>;
 }
 
+/**
+ * Liquidation d'un compte au format unifié (pas d'équivalent commun inter-SDK : interface **dédiée
+ * nommée**, champs aux **mêmes noms que le cœur** — `name`/`side`/`size`/`price`/`fee`/`time`).
+ * Le trade de liquidation porte le prix/la taille exécutés ; `side` déduit du sens du trade si
+ * disponible. Le détail (positions, risk info, marks) est conservé dans `xtras`.
+ */
+export interface Liquidation {
+  /** Paire/symbole (= `Pair.name`, résolu depuis `market_id`). */
+  name: string;
+  /** ID de la liquidation ; `null` si non fourni. */
+  id: string | null;
+  /** Sens du trade de liquidation ; `null` si indéterminé. */
+  side: Side | null;
+  /** Taille liquidée (chaîne décimale) ; `null` si non fournie. */
+  size: string | null;
+  /** Prix d'exécution (chaîne décimale) ; `null` si non fourni. */
+  price: string | null;
+  /** Frais (taker) ; `null` si non fourni. */
+  fee: string | null;
+  /** Type de liquidation natif (`partial`/`deleverage`…) ; `null` si non fourni. */
+  type: string | null;
+  /** Timestamp (ms). */
+  time: number;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
+/**
+ * Paiement de funding subi par une position au format unifié (interface **dédiée nommée**, champs
+ * aux **mêmes noms que le cœur** — `name`/`side`/`size`/`fundingRate`/`pnl`/`time`). `pnl` porte la
+ * variation de solde (`change`) appliquée au compte.
+ */
+export interface PositionFundingEntry {
+  /** Paire/symbole (= `Pair.name`, résolu depuis `market_id`). */
+  name: string;
+  /** Sens de la position au moment du funding ; `null` si non fourni. */
+  side: 'long' | 'short' | null;
+  /** Taille de la position (chaîne décimale) ; `null` si non fournie. */
+  size: string | null;
+  /** Taux de funding appliqué (chaîne décimale) ; `null` si non fourni. */
+  fundingRate: string | null;
+  /** Variation de solde (`change`) appliquée au compte ; `null` si non fournie. */
+  pnl: string | null;
+  /** Timestamp (ms). */
+  time: number;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
+/**
+ * Point d'une courbe de PnL d'un compte au format unifié (interface **dédiée nommée**, champs aux
+ * **mêmes noms que le cœur** — `time`/`pnl`). `pnl` = PnL de trading du point ; les composantes
+ * détaillées (pool, staking, inflow/outflow, volume) sont conservées dans `xtras`.
+ */
+export interface PnlPoint {
+  /** Timestamp (ms). */
+  time: number;
+  /** PnL de trading du point (chaîne décimale) ; `null` si non fourni. */
+  pnl: string | null;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
 /** Type de clé d'un signer. Lighter signe en L2 (clé API, courbe maison via WASM). */
 export type KeyType = 'lighter';
 

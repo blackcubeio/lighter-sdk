@@ -62,8 +62,10 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
         ],
         2, // OCO
       );
-      console.log('grouped orders txHash:', res.txHash);
-      expect(res.txHash).toBeTruthy();
+      // `placeBatch` renvoie `Order[]` (1 par leg) ; le txHash de la TX 28 est en `xtras`.
+      console.log('grouped orders txHash:', res[0]?.xtras?.txHash);
+      expect(res).toHaveLength(2);
+      expect(res[0]?.xtras?.txHash).toBeTruthy();
       await dex.perp().cancelAll({ name: 'BTC' });
     } catch (e) {
       const msg = String((e as Error).message);
@@ -74,26 +76,30 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
   }, 30_000);
 
   it('native.perp().getFundingRates() (public réel)', async () => {
+    // Sortie normalisée : `FundingRate[]` (type commun ; `exchange` en `xtras`).
     const fr = await dex.native.perp().getFundingRates();
-    console.log('funding_rates:', fr.funding_rates?.length);
-    expect(Array.isArray(fr.funding_rates)).toBe(true);
-    expect((fr.funding_rates ?? []).length).toBeGreaterThan(0);
+    console.log('funding_rates:', fr.length);
+    expect(Array.isArray(fr)).toBe(true);
+    expect(fr.length).toBeGreaterThan(0);
+    expect(typeof fr[0]?.name).toBe('string');
+    expect(typeof fr[0]?.fundingRate).toBe('string');
   });
 
   it('native.account() : liquidations / positionFunding / pnl (authentifiés réels)', async () => {
+    // Sorties normalisées : `Liquidation[]` / `PositionFundingEntry[]` / `PnlPoint[]`.
     const acc = dex.native.account();
     const liq = await acc.getLiquidations({ limit: 10 });
-    expect(liq.code).toBe(200);
+    expect(Array.isArray(liq)).toBe(true);
     const pf = await acc.getPositionFunding({ limit: 10 });
-    expect(pf.code).toBe(200);
+    expect(Array.isArray(pf)).toBe(true);
     const pnl = await acc.getPnl({
       resolution: '1h',
       startTime: Date.now() - 7 * 86_400_000,
       endTime: Date.now(),
       countBack: 10,
     });
-    console.log('pnl code:', pnl.code);
-    expect(pnl.code).toBe(200);
+    console.log('pnl points:', pnl.length);
+    expect(Array.isArray(pnl)).toBe(true);
   }, 30_000);
 
   it('native.signing().generate() (WASM local)', async () => {

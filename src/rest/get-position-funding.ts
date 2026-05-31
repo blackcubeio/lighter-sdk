@@ -1,10 +1,10 @@
 import type { LighterClient } from '../common/config';
-import type { LighterEnvelope } from '../common/native';
+import type { LighterEnvelope, NativePositionFunding } from '../common/native';
 import type { QueryParams } from '../common/types';
 import { httpGet } from './client';
 
 export interface PositionFundingEnvelope extends LighterEnvelope {
-  position_fundings?: unknown[];
+  position_fundings?: NativePositionFunding[];
 }
 
 /** Paiements de funding par position d'un compte (`/positionFunding`, requiert `auth`). */

@@ -149,3 +149,56 @@ export interface NativeFunding {
   direction?: 'long' | 'short';
   [extra: string]: unknown;
 }
+
+/** Taux de funding **courant** natif (`/funding-rates`). `rate` décimal, par exchange de référence. */
+export interface NativeFundingRate {
+  market_id: number;
+  exchange: string;
+  symbol: string;
+  rate: number;
+  [extra: string]: unknown;
+}
+
+/** Liquidation native (`/liquidations`). `executed_at` en **millisecondes**. */
+export interface NativeLiquidation {
+  id?: number;
+  market_id: number;
+  type?: string;
+  trade?: {
+    price?: string;
+    size?: string;
+    taker_fee?: string;
+    maker_fee?: string;
+    transaction_time?: number;
+    [extra: string]: unknown;
+  };
+  info?: Record<string, unknown>;
+  executed_at?: number;
+  [extra: string]: unknown;
+}
+
+/** Paiement de funding par position natif (`/positionFunding`). `timestamp` en **millisecondes**. */
+export interface NativePositionFunding {
+  timestamp: number;
+  market_id: number;
+  funding_id?: number;
+  change?: string;
+  discount?: string;
+  rate?: string;
+  position_size?: string;
+  position_side?: 'long' | 'short';
+  [extra: string]: unknown;
+}
+
+/** Point de courbe de PnL natif (`/pnl`). `timestamp` en **millisecondes**, montants décimaux. */
+export interface NativePnlEntry {
+  timestamp: number;
+  trade_pnl?: number;
+  pool_pnl?: number;
+  staking_pnl?: number;
+  trade_spot_pnl?: number;
+  inflow?: number;
+  outflow?: number;
+  volume?: number;
+  [extra: string]: unknown;
+}

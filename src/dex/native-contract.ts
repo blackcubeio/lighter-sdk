@@ -1,8 +1,11 @@
-import type { TxResult } from '../common/types';
-import type { getFundingRates } from '../rest/get-funding-rates';
-import type { getLiquidations } from '../rest/get-liquidations';
-import type { getPnl } from '../rest/get-pnl';
-import type { getPositionFunding } from '../rest/get-position-funding';
+import type {
+  FundingRate,
+  Liquidation,
+  Order,
+  PnlPoint,
+  PositionFundingEntry,
+  TxResult,
+} from '../common/types';
 import type { PlaceOrderParams } from './contract';
 
 /**
@@ -53,10 +56,15 @@ export interface GroupedOrder {
  * portable.
  */
 export interface INativePerp {
-  /** Taux de funding courants par marché / exchange de référence (public). */
-  getFundingRates(): ReturnType<typeof getFundingRates>;
-  /** Ordres groupés. `groupingType` : 0 = aucun, autres valeurs = OCO/bracket selon le protocole. */
-  placeBatch(orders: GroupedOrder[], groupingType?: number): Promise<TxResult>;
+  /** Taux de funding **courants** par marché → `FundingRate[]` (type commun ; `exchange` en `xtras`). */
+  getFundingRates(): Promise<FundingRate[]>;
+  /**
+   * Lot d'ordres groupés (TX 28). Entrée `GroupedOrder[]` (vocab commun), sortie `Order[]` (type
+   * commun, 1 `Order` par leg). `groupingType` : 0 = aucun, autres = OCO/bracket selon le protocole.
+   * Lighter ne renvoie qu'un `txHash` (sans statuts par leg) → `id` vide, `status: 'open'`, `txHash`
+   * dans `xtras`.
+   */
+  placeBatch(orders: GroupedOrder[], groupingType?: number): Promise<Order[]>;
 }
 
 /** Entrée — lecture du PnL (résolution + bornes). */
@@ -82,15 +90,15 @@ export interface UpdateAssetConfigParams {
  * par le scope). Absorbe l'ex-`accountConfig` : `updateSettings` (mode de trading), `updateAssetConfig`.
  */
 export interface INativeAccount {
-  getLiquidations(query?: {
-    limit?: number;
-    marketId?: number;
-  }): ReturnType<typeof getLiquidations>;
+  /** Liquidations du compte → `Liquidation[]` (interface dédiée, champs aux noms du cœur). */
+  getLiquidations(query?: { limit?: number; marketId?: number }): Promise<Liquidation[]>;
+  /** Paiements de funding par position → `PositionFundingEntry[]` (interface dédiée, noms du cœur). */
   getPositionFunding(query?: {
     limit?: number;
     marketId?: number;
-  }): ReturnType<typeof getPositionFunding>;
-  getPnl(query: PnlParams): ReturnType<typeof getPnl>;
+  }): Promise<PositionFundingEntry[]>;
+  /** Courbe de PnL du compte → `PnlPoint[]` (interface dédiée, `time`/`pnl` ; composantes en `xtras`). */
+  getPnl(query: PnlParams): Promise<PnlPoint[]>;
   updateSettings(params: UpdateSettingsParams): Promise<TxResult>;
   updateAssetConfig(params: UpdateAssetConfigParams): Promise<TxResult>;
 }

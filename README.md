@@ -59,8 +59,8 @@ réseau** (lazy), donc des signers mainnet et testnet coexistent isolés (cf.
 
 | Scope | Rôle |
 |---|---|
-| `dex.native.perp()` | miroir natif de `perp()` : `getFundingRates` + `placeBatch` (ordres groupés TX 28) |
-| `dex.native.account()` | miroir natif de `account()` : `getLiquidations`, `getPositionFunding`, `getPnl`, `updateSettings`, `updateAssetConfig` |
+| `dex.native.perp()` | miroir natif de `perp()` : `getFundingRates` → `FundingRate[]`, `placeBatch` (ordres groupés TX 28) → `Order[]` |
+| `dex.native.account()` | miroir natif de `account()` : `getLiquidations` → `Liquidation[]`, `getPositionFunding` → `PositionFundingEntry[]`, `getPnl` → `PnlPoint[]`, `updateSettings`, `updateAssetConfig` |
 | `dex.native.signing()` | `generate`, `getNextNonce`, `getAuthToken` (clés API / signature) |
 | `dex.native.subAccounts()` | `create` |
 | `dex.native.pools()` | public pools / LP : `create`, `update`, `mint`, `burn` |

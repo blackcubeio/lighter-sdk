@@ -1,10 +1,10 @@
 import type { LighterClient } from '../common/config';
-import type { LighterEnvelope } from '../common/native';
+import type { LighterEnvelope, NativeLiquidation } from '../common/native';
 import type { QueryParams } from '../common/types';
 import { httpGet } from './client';
 
 export interface LiquidationsEnvelope extends LighterEnvelope {
-  liquidations?: unknown[];
+  liquidations?: NativeLiquidation[];
 }
 
 /** Liquidations d'un compte (`/liquidations`, requiert `auth`). */
