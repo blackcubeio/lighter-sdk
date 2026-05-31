@@ -83,10 +83,10 @@ import type {
 import type {
   GroupedOrder,
   IAccountConfig,
-  IAccountExtra,
   IAdvancedOrders,
   IApiKeys,
-  IMarketDataExtra,
+  INativeAccount,
+  INativeMarket,
   IPools,
   IStaking,
   ISubAccountsAdmin,
@@ -825,15 +825,15 @@ class LighterAdvancedOrders extends LighterScope implements IAdvancedOrders {
   }
 }
 
-/** Scope **marketData** : données de marché supplémentaires publiques — {@link IMarketDataExtra}. */
-class LighterMarketData extends LighterScope implements IMarketDataExtra {
+/** Scope **marketData** : données de marché supplémentaires publiques — {@link INativeMarket}. */
+class LighterMarketData extends LighterScope implements INativeMarket {
   public fundingRates() {
     return getFundingRates(this.client, this.label);
   }
 }
 
-/** Scope **account** : lectures de compte étendues authentifiées — {@link IAccountExtra}. */
-class LighterAccountExtra extends LighterScope implements IAccountExtra {
+/** Scope **account** : lectures de compte étendues authentifiées — {@link INativeAccount}. */
+class LighterAccountExtra extends LighterScope implements INativeAccount {
   public async liquidations(query?: { limit?: number; marketId?: number }) {
     const { auth } = await getAuthToken(this.client, this.signed());
     return getLiquidations(
@@ -954,9 +954,9 @@ export class Lighter {
       accountConfig: (label?: string) => new LighterAccountConfig(c, r(label)),
       /** Ordres groupés (TX 28, OCO/bracket) — `IAdvancedOrders`. */
       advancedOrders: (label?: string) => new LighterAdvancedOrders(c, r(label), this.markets),
-      /** Données de marché supplémentaires (funding-rates courants) — `IMarketDataExtra`. */
+      /** Données de marché supplémentaires (funding-rates courants) — `INativeMarket`. */
       marketData: (label?: string) => new LighterMarketData(c, r(label)),
-      /** Lectures de compte étendues (liquidations, positionFunding, pnl) — `IAccountExtra`. */
+      /** Lectures de compte étendues (liquidations, positionFunding, pnl) — `INativeAccount`. */
       account: (label?: string) => new LighterAccountExtra(c, r(label)),
     };
   }

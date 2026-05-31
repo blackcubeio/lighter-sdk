@@ -77,7 +77,7 @@ await dex.native.advancedOrders().placeBatch([
 ]);
 ```
 
-## `native.marketData()` — `IMarketDataExtra` (données de marché publiques)
+## `native.marketData()` — `INativeMarket` (données de marché publiques)
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `fundingRates()` | — | `Promise<{ funding_rates }>` (taux courants par marché/exchange) |
@@ -86,7 +86,7 @@ await dex.native.advancedOrders().placeBatch([
 await dex.native.marketData().fundingRates();
 ```
 
-## `native.account()` — `IAccountExtra` (lectures de compte authentifiées)
+## `native.account()` — `INativeAccount` (lectures de compte authentifiées)
 *(`accountIndex` + token `auth` injectés par le scope.)*
 | Méthode | Entrée | Sortie |
 |---|---|---|

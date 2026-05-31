@@ -54,13 +54,13 @@ export interface IAdvancedOrders {
 }
 
 /** Données de marché supplémentaires (lectures publiques). */
-export interface IMarketDataExtra {
+export interface INativeMarket {
   /** Taux de funding courants par marché / exchange de référence. */
   fundingRates(): ReturnType<typeof getFundingRates>;
 }
 
 /** Lectures de compte étendues (authentifiées ; `accountIndex`+`auth` injectés par le scope). */
-export interface IAccountExtra {
+export interface INativeAccount {
   liquidations(query?: { limit?: number; marketId?: number }): ReturnType<typeof getLiquidations>;
   positionFunding(query?: {
     limit?: number;
