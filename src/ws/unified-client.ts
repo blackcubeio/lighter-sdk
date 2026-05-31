@@ -1,5 +1,5 @@
 import type { LighterClient } from '../common/config';
-import type { NativeTrade } from '../common/native';
+import type { NativeCandlestick, NativeTrade } from '../common/native';
 import type {
   Candle,
   JsonValue,
@@ -9,8 +9,8 @@ import type {
   Price,
   Trade,
 } from '../common/types';
-import { intervalToMs } from '../common/utils';
 import type { Unsubscribe, WsClientOptions } from '../common/ws';
+import { CandleConverter } from '../converters/candle';
 import { TradeConverter } from '../converters/trade';
 import { LighterWsClient } from './client';
 
@@ -70,7 +70,7 @@ export class UnifiedWsClient {
     this.ws = new LighterWsClient(client, options);
   }
 
-  /** Bougies temps réel (`candle/<id>/<resolution>`). */
+  /** Bougies temps réel (`candle/<id>/<resolution>`). Même shape que le REST → même converter. */
   subscribeCandles(
     marketId: number,
     name: string,
@@ -78,31 +78,14 @@ export class UnifiedWsClient {
     kind: MarketKind,
     cb: (candle: Candle) => void,
   ): Unsubscribe {
-    const span = intervalToMs(interval);
+    const converter = new CandleConverter(name, interval, kind);
     return this.ws.subscribe(`candle/${marketId}/${interval}`, (msg) => {
       const obj = asObj(msg);
       for (const raw of asArr(obj?.candles)) {
         const c = asObj(raw);
-        if (c === undefined) {
-          continue;
+        if (c !== undefined) {
+          cb(converter.toCommon(c as unknown as NativeCandlestick));
         }
-        const t = Number(c.t);
-        cb({
-          t,
-          T: span > 0 ? t + span : t,
-          s: name,
-          i: interval,
-          o: String(c.o),
-          c: String(c.c),
-          h: String(c.h),
-          l: String(c.l),
-          v: String(c.v),
-          n: 0,
-          kind,
-          qv: c.V !== undefined ? String(c.V) : null,
-          tbbv: null,
-          tbqv: null,
-        });
       }
     });
   }

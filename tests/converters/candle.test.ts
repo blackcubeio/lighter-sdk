@@ -3,38 +3,38 @@ import type { NativeCandlestick } from '../../src/common/native';
 import { CandleConverter } from '../../src/converters/candle';
 
 const WIRE: NativeCandlestick = {
-  timestamp: 1_700_000_000, // secondes
-  open: 74000,
-  high: 74500,
-  low: 73800,
-  close: 74250,
-  volume0: 12.5,
-  volume1: 925_000,
-  last_trade_id: 42,
+  t: 1_780_192_800_000, // open time en ms
+  o: 74002,
+  h: 74201,
+  l: 73840.3,
+  c: 74049.1,
+  v: 192.0664, // volume base
+  V: 14_212_370.82, // volume quote
+  i: 21_156_302_243, // dernier trade id
 };
 
 describe('CandleConverter Lighter', () => {
   const conv = new CandleConverter('BTC', '1h', 'perp');
 
-  it('toCommon : timestamp s → ms, close time via intervalle, v=base / qv=quote', () => {
+  it('toCommon : t déjà en ms, close time via intervalle, v=base / qv=quote', () => {
     const c = conv.toCommon(WIRE);
-    expect(c.t).toBe(1_700_000_000_000);
-    expect(c.T).toBe(1_700_000_000_000 + 3_600_000);
+    expect(c.t).toBe(1_780_192_800_000);
+    expect(c.T).toBe(1_780_192_800_000 + 3_600_000);
     expect(c.s).toBe('BTC');
     expect(c.i).toBe('1h');
     expect({ o: c.o, h: c.h, l: c.l, c: c.c, v: c.v, qv: c.qv }).toEqual({
-      o: '74000',
-      h: '74500',
-      l: '73800',
-      c: '74250',
-      v: '12.5',
-      qv: '925000',
+      o: '74002',
+      h: '74201',
+      l: '73840.3',
+      c: '74049.1',
+      v: '192.0664',
+      qv: '14212370.82',
     });
     expect(c.kind).toBe('perp');
-    expect(c.xtras).toEqual({ last_trade_id: 42 });
+    expect(c.xtras).toEqual({ i: 21_156_302_243 }); // trade id hors cœur
   });
 
-  it('toNative(toCommon(wire)) ≡ wire (bijection, last_trade_id conservé via xtras)', () => {
+  it('toNative(toCommon(wire)) ≡ wire (bijection, trade id conservé via xtras)', () => {
     expect(conv.toNative(conv.toCommon(WIRE))).toEqual(WIRE);
   });
 
