@@ -48,18 +48,15 @@ export interface GroupedOrder {
 }
 
 /**
- * Surplus **ordres** Lighter, porté par le scope marché (`perp()`/`spot()`) : ordres groupés
- * (TX 28, OCO/bracket). Verbe aligné `placeBatch` (HL/Aster/Pacifica).
+ * Surplus **perp** Lighter spécifique, accès `dex.native.perp(label?)` (miroir natif de `dex.perp()`) :
+ * lectures marché supplémentaires (publiques) **+** ordres groupés (TX 28, OCO/bracket). Hors contrat
+ * portable.
  */
-export interface INativeOrders {
-  /** `groupingType` : 0 = aucun, autres valeurs = OCO/bracket selon le protocole. */
-  placeBatch(orders: GroupedOrder[], groupingType?: number): Promise<TxResult>;
-}
-
-/** Données de marché supplémentaires (lectures publiques). */
-export interface INativeMarket {
-  /** Taux de funding courants par marché / exchange de référence. */
+export interface INativePerp {
+  /** Taux de funding courants par marché / exchange de référence (public). */
   getFundingRates(): ReturnType<typeof getFundingRates>;
+  /** Ordres groupés. `groupingType` : 0 = aucun, autres valeurs = OCO/bracket selon le protocole. */
+  placeBatch(orders: GroupedOrder[], groupingType?: number): Promise<TxResult>;
 }
 
 /** Entrée — lecture du PnL (résolution + bornes). */

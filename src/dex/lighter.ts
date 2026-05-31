@@ -85,8 +85,7 @@ import type {
 import type {
   GroupedOrder,
   INativeAccount,
-  INativeMarket,
-  INativeOrders,
+  INativePerp,
   IPools,
   ISigning,
   IStaking,
@@ -210,7 +209,6 @@ class LighterMarket
     IProductAccount,
     IOrderHistory,
     ITrading,
-    INativeOrders,
     IMarginMode,
     IIsolatedMargin,
     IRemovableMargin
@@ -493,37 +491,6 @@ class LighterMarket
       direction: MARGIN_DIRECTION.remove,
     });
   }
-
-  // ── INativeOrders : ordres groupés (TX 28, OCO/bracket) portés par le scope marché ──
-  public async placeBatch(orders: GroupedOrder[], groupingType = 0): Promise<SendTxResult> {
-    const legs = await Promise.all(
-      orders.map(async (o) => {
-        const spec = PLACE_ORDER_TYPE[o.type];
-        const meta = await this.markets.meta(o.name, 'perp', this.label);
-        const tif = spec.market
-          ? TIF.ioc
-          : o.tif === 'ioc'
-            ? TIF.ioc
-            : o.tif === 'alo'
-              ? TIF.alo
-              : TIF.gtt;
-        return {
-          marketIndex: meta.marketId,
-          clientOrderIndex: o.clientId !== undefined ? Number(o.clientId) : 0,
-          baseAmount: scaleToInt(o.size, meta.sizeDecimals),
-          price: scaleToInt(o.price, meta.priceDecimals),
-          isAsk: o.side === 'sell' ? 1 : 0,
-          orderType: spec.native,
-          timeInForce: tif,
-          reduceOnly: o.reduceOnly === true ? 1 : 0,
-          triggerPrice:
-            o.triggerPrice !== undefined ? scaleToInt(o.triggerPrice, meta.priceDecimals) : 0,
-          orderExpiry: tif === TIF.ioc ? 0 : -1,
-        };
-      }),
-    );
-    return createGroupedOrders(this.client, this.signed(), { groupingType, orders: legs });
-  }
 }
 
 /** Scope **compte transverse** : soldes, sous-comptes, retrait, kill-switch. */
@@ -767,18 +734,16 @@ class LighterSubAccounts extends LighterScope implements ISubAccountsAdmin {
 }
 
 /**
- * Transferts de fonds **unifiés** (`transfers()` commun). Lighter ne route que vers un autre compte
- * (`to:{account}` = index de compte en string ; collatéral USDC).
+ * Transferts de fonds (`transfers()` commun). `TransferParams` est **narrowé** à `to: { account }`
+ * (index de compte en string ; collatéral USDC) au niveau **type** → aucune route invalide ne compile,
+ * donc **aucun throw** « non supporté ».
  */
 class LighterTransfers extends LighterScope implements ITransfers {
   public transfer(p: TransferParams): Promise<SendTxResult> {
-    if ('account' in p.to) {
-      return transfer(this.client, this.signed(), {
-        toAccountIndex: Number(p.to.account),
-        amount: scaleToInt(p.amount, 6),
-      });
-    }
-    throw new Error('transfer : Lighter ne supporte que `to: { account }` (index de compte).');
+    return transfer(this.client, this.signed(), {
+      toAccountIndex: Number(p.to.account),
+      amount: scaleToInt(p.amount, 6),
+    });
   }
 }
 
@@ -808,10 +773,51 @@ class LighterStaking extends LighterScope implements IStaking {
   }
 }
 
-/** Scope **marketData** : données de marché supplémentaires publiques — {@link INativeMarket}. */
-class LighterMarketData extends LighterScope implements INativeMarket {
+/**
+ * Surplus **perp** Lighter (miroir natif de `dex.perp()`), accès `dex.native.perp(label?)` :
+ * lectures marché supplémentaires (publiques) + ordres groupés (TX 28). Hors contrat portable.
+ */
+class LighterNativePerp extends LighterScope implements INativePerp {
+  constructor(
+    client: LighterClient,
+    label: string | undefined,
+    private readonly markets: MarketsResolver,
+  ) {
+    super(client, label);
+  }
+
   public getFundingRates() {
     return getFundingRates(this.client, this.label);
+  }
+
+  public async placeBatch(orders: GroupedOrder[], groupingType = 0): Promise<SendTxResult> {
+    const legs = await Promise.all(
+      orders.map(async (o) => {
+        const spec = PLACE_ORDER_TYPE[o.type];
+        const meta = await this.markets.meta(o.name, 'perp', this.label);
+        const tif = spec.market
+          ? TIF.ioc
+          : o.tif === 'ioc'
+            ? TIF.ioc
+            : o.tif === 'alo'
+              ? TIF.alo
+              : TIF.gtt;
+        return {
+          marketIndex: meta.marketId,
+          clientOrderIndex: o.clientId !== undefined ? Number(o.clientId) : 0,
+          baseAmount: scaleToInt(o.size, meta.sizeDecimals),
+          price: scaleToInt(o.price, meta.priceDecimals),
+          isAsk: o.side === 'sell' ? 1 : 0,
+          orderType: spec.native,
+          timeInForce: tif,
+          reduceOnly: o.reduceOnly === true ? 1 : 0,
+          triggerPrice:
+            o.triggerPrice !== undefined ? scaleToInt(o.triggerPrice, meta.priceDecimals) : 0,
+          orderExpiry: tif === TIF.ioc ? 0 : -1,
+        };
+      }),
+    );
+    return createGroupedOrders(this.client, this.signed(), { groupingType, orders: legs });
   }
 }
 
@@ -932,14 +938,19 @@ export class Lighter {
   // ── Surplus spécifique Lighter (namespace `native`, convention partagée par les 4 SDK) ──
 
   /**
-   * Capacités **spécifiques à Lighter**, hors contrat unifié. Accès uniforme à tous les SDK :
-   * `dex.native.<capacité>(label?)`. Noms d'interfaces (`IApiKeys`, `ITransfers`, `IPools`…) et
-   * verbes **alignés** entre SDK quand le geste existe ailleurs ; seuls les types diffèrent.
+   * Capacités **spécifiques à Lighter**. Le namespace `native` **miroite** le commun :
+   * `dex.native.perp()` (reads marché + ordres groupés, miroir de `perp()`), `dex.native.account()`
+   * (lectures étendues + config, miroir de `account()`) ; + capacités propres `signing`, `subAccounts`,
+   * `pools`, `staking`.
    */
   public get native() {
     const c = this.client;
     const r = (label?: string) => this.resolve(label);
     return {
+      /** Surplus **perp** (miroir natif de perp()) : funding-rates + ordres groupés (TX 28). */
+      perp: (label?: string) => new LighterNativePerp(c, r(label), this.markets),
+      /** Lectures de compte étendues + config (updateSettings/updateAssetConfig) — `INativeAccount`. */
+      account: (label?: string) => new LighterAccountExtra(c, r(label)),
       /** Signature : génération de clé API, nonce, token d'auth — `ISigning`. */
       signing: (label?: string) => new LighterSigning(c, r(label)),
       /** Création de sous-comptes — `ISubAccountsAdmin`. */
@@ -948,10 +959,6 @@ export class Lighter {
       pools: (label?: string) => new LighterPools(c, r(label)),
       /** Staking (deposit / withdraw) — `IStaking`. */
       staking: (label?: string) => new LighterStaking(c, r(label)),
-      /** Données de marché supplémentaires (funding-rates courants) — `INativeMarket`. */
-      marketData: (label?: string) => new LighterMarketData(c, r(label)),
-      /** Lectures de compte étendues + config de compte (updateSettings/updateAssetConfig) — `INativeAccount`. */
-      account: (label?: string) => new LighterAccountExtra(c, r(label)),
     };
   }
 

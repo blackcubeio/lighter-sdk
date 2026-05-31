@@ -1,9 +1,16 @@
 # Surface `native` — spécifique à `@blackcube/lighter-sdk`
 
 Capacités **propres à Lighter**, hors contrat unifié (voir [`common.md`](common.md) pour le portable).
-Accès uniforme à tous les SDK : **`dex.native.<capacité>(label?)`**. Les noms d'interfaces (`ISigning`,
-`IPools`, `IStaking`…) et de méthodes sont **alignés entre SDK** quand le geste existe ailleurs
-(`create`/`update`/`deposit`/`get…`…) ; sinon descriptifs. Les types d'entrée portent le suffixe `Params`.
+Accès **`dex.native.<capacité>(label?)`**. Le namespace `native` **miroite** le commun :
+
+| commun (portable) | natif (spécifique) |
+|---|---|
+| `dex.perp()` | `dex.native.perp()` — funding-rates + ordres groupés (TX 28) |
+| `dex.account()` | `dex.native.account()` — lectures étendues + config de compte |
+| `dex.transfers()` | — (narrowé `to:{account}`) |
+
+Capacités **sans équivalent commun** : `native.signing()`, `native.subAccounts()`, `native.pools()`,
+`native.staking()`. Types d'entrée en `…Params`.
 
 ```ts
 const dex = new Lighter({ desk: signer }, { default: 'desk' });
@@ -38,9 +45,9 @@ await dex.native.signing().getAuthToken(3600);
 await dex.native.subAccounts().create();
 ```
 
-> **Transferts** : `transfers()` est désormais un scope **commun** (`dex.transfers()`), plus dans
-> `native`. Modèle unifié `transfer({ from?, to, asset?, amount })` — Lighter ne supporte que
-> `to: { account: '<index>' }`. Voir `doc/common.md`.
+> **Transferts** : `transfers()` est un scope **commun** (`dex.transfers()`), pas dans `native`.
+> `TransferParams` est **narrowé** à `to: { account: '<index>' }` (collatéral USDC) — le compilateur
+> refuse toute autre route. Voir `doc/common.md`.
 
 ## `native.pools()` — `IPools` (public pools / LP)
 *(verbes alignés `create`/`update` + métier `mint`/`burn`.)*
@@ -58,27 +65,22 @@ await dex.native.pools().mint({ publicPoolIndex: 3, shareAmount: 1000 });
 await dex.native.pools().burn({ publicPoolIndex: 3, shareAmount: 500 });
 ```
 
-## Surplus ordres — `INativeOrders`, porté par `perp()` / `spot()` (ordres groupés, TX 28)
-*(pas de scope `native` dédié : exposé sur le scope marché. Verbe aligné `placeBatch` ; `groupingType` :
-0 = lot indépendant, autres = OCO/bracket. La façade résout marché + scaling par leg.)*
+## `native.perp()` — `INativePerp` (miroir natif de `perp()`)
+Surplus **perp** : lecture marché supplémentaire (publique) **+** ordres groupés (TX 28). Hors
+contrat portable. (`groupingType` : 0 = lot indépendant, autres = OCO/bracket ; la façade résout
+marché + scaling par leg.)
+
 | Méthode | Entrée | Sortie |
 |---|---|---|
+| `getFundingRates()` | — | `Promise<{ funding_rates }>` (taux courants par marché/exchange, public) |
 | `placeBatch(orders, groupingType?)` | `GroupedOrder[]` `{ name; side; type; size; price; tif?; reduceOnly?; triggerPrice?; clientId? }` | `Promise<TxResult>` |
 
 ```ts
-await dex.perp().placeBatch([
+await dex.native.perp().getFundingRates();
+await dex.native.perp().placeBatch([
   { name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '30000', tif: 'alo' },
   { name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '29000', tif: 'alo' },
 ]);
-```
-
-## `native.marketData()` — `INativeMarket` (données de marché publiques)
-| Méthode | Entrée | Sortie |
-|---|---|---|
-| `getFundingRates()` | — | `Promise<{ funding_rates }>` (taux courants par marché/exchange) |
-
-```ts
-await dex.native.marketData().getFundingRates();
 ```
 
 ## `native.account()` — `INativeAccount` (lectures + config de compte authentifiées)
@@ -114,8 +116,8 @@ await dex.native.staking().withdraw({ stakingPoolIndex: 0, shareAmount: 500 });
 ---
 
 > **Validation** (`tests/native.testnet.test.ts`, testnet réel) :
-> - **testé** : `signing` (generate/getNextNonce/getAuthToken), `perp().placeBatch` (chemin TX 28
->   signé — WASM officiel), `marketData.getFundingRates` (public), `account` (getLiquidations/
+> - **testé** : `signing` (generate/getNextNonce/getAuthToken), `native.perp().placeBatch` (chemin TX 28
+>   signé — WASM officiel), `native.perp().getFundingRates` (public), `account` (getLiquidations/
 >   getPositionFunding/getPnl, authentifiés).
 > - **préparées + documentées, testées manuellement** (écritures à effet de bord / création de ressource) :
 >   `subAccounts.create`, `transfers().transfer` (commun), `pools.*`, `staking.deposit/withdraw`,

@@ -49,7 +49,7 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
     const ref = Number((await dex.perp().getPrices()).find((p) => p.name === 'BTC')?.last ?? 0);
     expect(ref).toBeGreaterThan(0);
     try {
-      const res = await dex.perp().placeBatch(
+      const res = await dex.native.perp().placeBatch(
         [
           { name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: (ref * 0.5).toFixed(1) },
           {
@@ -73,8 +73,8 @@ describe.skipIf(!ready)('Lighter native — capacités signées (testnet réel)'
     }
   }, 30_000);
 
-  it('native.marketData().getFundingRates() (public réel)', async () => {
-    const fr = await dex.native.marketData().getFundingRates();
+  it('native.perp().getFundingRates() (public réel)', async () => {
+    const fr = await dex.native.perp().getFundingRates();
     console.log('funding_rates:', fr.funding_rates?.length);
     expect(Array.isArray(fr.funding_rates)).toBe(true);
     expect((fr.funding_rates ?? []).length).toBeGreaterThan(0);

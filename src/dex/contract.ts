@@ -169,18 +169,14 @@ export interface ISubAccounts {
   getSubAccounts(): Promise<SubAccount[]>;
 }
 
-/** Endpoint d'un transfert : le couple `from`/`to` dit OÙ vont les fonds (C7/unifié). */
-export type TransferEndpoint =
-  | { wallet: 'perp' | 'spot' } // mon wallet perp / spot (transfert interne)
-  | { account: string } // un autre compte (adresse ; Lighter = index de compte en string)
-  | { subAccount: string }; // un de mes sous-comptes
-
-/** Paramètres unifiés d'un transfert de fonds. */
+/**
+ * Paramètres d'un transfert — **narrowé pour Lighter** : la seule route est vers un autre **compte**
+ * par index (`to: { account: '<index>' }`, collatéral USDC). Le compilateur refuse les routes
+ * inexistantes (`wallet`/`subAccount`) → pas de throw « non supporté » au runtime (#3).
+ */
 export interface TransferParams {
-  from?: TransferEndpoint; // source ; défaut = compte/wallet courant
-  to: TransferEndpoint; // destination
-  asset?: string; // défaut 'USDC'
-  amount: string; // chaîne décimale
+  to: { account: string };
+  amount: string; // chaîne décimale (USDC)
 }
 
 /** **LE** domaine pour bouger des fonds. Chaque DEX implémente les combinaisons `from/to` supportées. */

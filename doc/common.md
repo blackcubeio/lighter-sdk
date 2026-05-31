@@ -124,16 +124,15 @@ await dex.account().disarm();
 ---
 
 ## `transfers(label?)` — transferts de fonds (commun)
-Modèle **unifié** : `transfer({ from?, to, asset?, amount })`. Chaque extrémité est un `TransferEndpoint` :
-`{ wallet: 'perp' | 'spot' }` · `{ account: string }` · `{ subAccount: string }`. La façade route vers
-l'endpoint natif selon `(from, to)` ; une route non supportée lève une erreur explicite.
+`TransferParams` est **narrowé pour Lighter** : la seule route est vers un autre **compte** par index.
+Le **type** l'impose (`to: { account: string }`) → le compilateur refuse toute autre route, **aucun
+throw** « non supporté » au runtime.
 
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `transfer(p)` | `TransferParams` `{ from?: TransferEndpoint; to: TransferEndpoint; asset?: string; amount: string }` | `Promise<unknown>` |
+| `transfer(p)` | `TransferParams` `{ to: { account: string }; amount: string }` | `Promise<unknown>` |
 
-Routes **Lighter** : `to: { account: '<index>' }` uniquement (transfert de collatéral vers un autre
-compte par index ; `amount` en USDC).
+`to.account` = **index de compte** (string) ; `amount` en USDC (collatéral).
 
 ```ts
 await dex.transfers().transfer({ to: { account: '42' }, amount: '10.5' });

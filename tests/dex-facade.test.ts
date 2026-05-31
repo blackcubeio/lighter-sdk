@@ -12,12 +12,17 @@ describe('Lighter — façade & lectures publiques (mainnet réel)', () => {
     expect(typeof dex.transfers).toBe('function');
     expect(typeof dex.ws).toBe('function');
     expect(typeof dex.wsSpot).toBe('function');
-    for (const c of ['signing', 'subAccounts', 'pools', 'staking', 'marketData', 'account']) {
+    for (const c of ['perp', 'account', 'signing', 'subAccounts', 'pools', 'staking']) {
       expect(typeof (dex.native as Record<string, unknown>)[c]).toBe('function');
     }
     // `transfers` est COMMUN (top-level), plus dans native.
     expect((dex.native as Record<string, unknown>).transfers).toBeUndefined();
-    // `accountConfig` absorbé par `account` ; `apiKeys` renommé `signing`.
+    // Miroir : surplus perp (funding-rates + ordres groupés) sous native.perp(), pas sur perp() commun.
+    expect(typeof dex.native.perp().placeBatch).toBe('function');
+    expect(typeof dex.native.perp().getFundingRates).toBe('function');
+    expect((dex.perp() as unknown as Record<string, unknown>).placeBatch).toBeUndefined();
+    // `marketData`→`perp` ; `accountConfig` absorbé par `account` ; `apiKeys` renommé `signing`.
+    expect((dex.native as Record<string, unknown>).marketData).toBeUndefined();
     expect((dex.native as Record<string, unknown>).accountConfig).toBeUndefined();
     expect((dex.native as Record<string, unknown>).apiKeys).toBeUndefined();
     // Les anciens scopes top-level ont migré sous `native` (plus de top-level).

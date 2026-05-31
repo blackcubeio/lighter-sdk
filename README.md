@@ -46,17 +46,25 @@ const positions = await dex.perp().getPositions();
 réseau** (lazy), donc des signers mainnet et testnet coexistent isolés (cf.
 [doc/signing.md](doc/signing.md)). `label` absent ⇒ signer par défaut.
 
+**Commun (portable)** :
+
 | Scope | Rôle |
 |---|---|
-| `perp(label?)` / `spot(label?)` | Marché (perp ou spot) + trading + compte du produit |
-| `account(label?)` | Transverse : `getBalances` (tous les actifs spot), `getSubAccounts`, `withdraw` |
-| `ws(label?)` / `wsSpot(label?)` | Temps réel (perp ou spot) : carnet, trades, bougies, BBO, prix, ordres/positions/fills |
-| `apiKeys(label?)` | `generateApiKey`, `getNextNonce`, `getAuthToken` (spécifique Lighter) |
-| `subAccounts(label?)` | `createSubAccount` (spécifique Lighter) |
-| `transfers(label?)` | `transfer` de collatéral entre comptes (spécifique Lighter) |
-| `pools(label?)` | public pools / LP : `createPublicPool`, `updatePublicPool`, `mintShares`, `burnShares` |
-| `staking(label?)` | `stakeAssets`, `unstakeAssets` |
-| `accountConfig(label?)` | `updateAccountConfig` (mode de trading), `updateAccountAssetConfig` (actif comme marge) |
+| `perp(label?)` / `spot(label?)` | Marché (perp ou spot) + trading (`place`/`cancel`/`cancelAll`/`edit`) + compte du produit |
+| `account(label?)` | Transverse : `getBalances`, `getSubAccounts`, `withdraw` |
+| `transfers(label?)` | `transfer({ to: { account }, amount })` — **narrowé** : index de compte uniquement (USDC) |
+| `ws(label?)` / `wsSpot(label?)` | Temps réel : carnet, trades, bougies, BBO, prix, ordres/positions/fills |
+
+**Surface `native`** (`dex.native.<cap>()`) — **miroite** le commun ; détail dans [`doc/native.md`](doc/native.md) :
+
+| Scope | Rôle |
+|---|---|
+| `dex.native.perp()` | miroir natif de `perp()` : `getFundingRates` + `placeBatch` (ordres groupés TX 28) |
+| `dex.native.account()` | miroir natif de `account()` : `getLiquidations`, `getPositionFunding`, `getPnl`, `updateSettings`, `updateAssetConfig` |
+| `dex.native.signing()` | `generate`, `getNextNonce`, `getAuthToken` (clés API / signature) |
+| `dex.native.subAccounts()` | `create` |
+| `dex.native.pools()` | public pools / LP : `create`, `update`, `mint`, `burn` |
+| `dex.native.staking()` | `deposit`, `withdraw` |
 
 > Non surfacés : `changePubKey` et `approveIntegrator` exigent une **signature L1 EVM** du
 > `messageToSign` que le `.wasm` vendoré ne permet pas de réinjecter dans la transaction — à

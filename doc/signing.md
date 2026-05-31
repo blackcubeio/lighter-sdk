@@ -17,8 +17,8 @@ interface Signer {
 }
 ```
 
-Une API key se crée hors SDK (interface Lighter / SDK officiel). `apiKeys().generateApiKey()` génère
-une paire de clés via le WASM, mais l'**enregistrement** de la clé publique sur le compte
+Une API key se crée hors SDK (interface Lighter / SDK officiel). `dex.native.signing().generate()`
+génère une paire de clés via le WASM, mais l'**enregistrement** de la clé publique sur le compte
 (`changePubKey`) n'est pas surfacé par cette version.
 
 ## Une instance WASM **par réseau** (isolation préservée)
