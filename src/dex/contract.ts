@@ -169,6 +169,25 @@ export interface ISubAccounts {
   getSubAccounts(): Promise<SubAccount[]>;
 }
 
+/** Endpoint d'un transfert : le couple `from`/`to` dit OÙ vont les fonds (C7/unifié). */
+export type TransferEndpoint =
+  | { wallet: 'perp' | 'spot' } // mon wallet perp / spot (transfert interne)
+  | { account: string } // un autre compte (adresse ; Lighter = index de compte en string)
+  | { subAccount: string }; // un de mes sous-comptes
+
+/** Paramètres unifiés d'un transfert de fonds. */
+export interface TransferParams {
+  from?: TransferEndpoint; // source ; défaut = compte/wallet courant
+  to: TransferEndpoint; // destination
+  asset?: string; // défaut 'USDC'
+  amount: string; // chaîne décimale
+}
+
+/** **LE** domaine pour bouger des fonds. Chaque DEX implémente les combinaisons `from/to` supportées. */
+export interface ITransfers {
+  transfer(params: TransferParams): Promise<unknown>;
+}
+
 /**
  * **Kill-switch / dead-man's switch serveur** : annule TOUS les ordres après `afterMs` ms de
  * silence, à rafraîchir périodiquement (heartbeat). Capacité **non universelle** — seules les

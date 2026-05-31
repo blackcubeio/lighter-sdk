@@ -71,6 +71,7 @@ import type {
   IRemovableMargin,
   ISubAccounts,
   ITrading,
+  ITransfers,
   IsolatedMarginParams,
   LeverageParams,
   MarginModeParams,
@@ -78,6 +79,7 @@ import type {
   PlaceOrderParams,
   SymbolParams,
   TradesParams,
+  TransferParams,
   WithdrawParams,
 } from './contract';
 import type {
@@ -90,8 +92,6 @@ import type {
   IPools,
   IStaking,
   ISubAccountsAdmin,
-  ITransfers,
-  Transfer,
 } from './native-contract';
 
 /** Métadonnée de marché résolue (pour le mapping `name → market_id` + scaling décimal). */
@@ -735,14 +735,19 @@ class LighterSubAccounts extends LighterScope implements ISubAccountsAdmin {
   }
 }
 
-/** Scope **transfers** : transfert de collatéral entre comptes — {@link ITransfers}. */
+/**
+ * Transferts de fonds **unifiés** (`transfers()` commun). Lighter ne route que vers un autre compte
+ * (`to:{account}` = index de compte en string ; collatéral USDC).
+ */
 class LighterTransfers extends LighterScope implements ITransfers {
-  public transfer(input: Transfer): Promise<SendTxResult> {
-    return transfer(this.client, this.signed(), {
-      toAccountIndex: input.toAccountIndex,
-      amount: scaleToInt(input.amount, 6),
-      memo: input.memo,
-    });
+  public transfer(p: TransferParams): Promise<SendTxResult> {
+    if ('account' in p.to) {
+      return transfer(this.client, this.signed(), {
+        toAccountIndex: Number(p.to.account),
+        amount: scaleToInt(p.amount, 6),
+      });
+    }
+    throw new Error('transfer : Lighter ne supporte que `to: { account }` (index de compte).');
   }
 }
 
@@ -905,6 +910,11 @@ export class Lighter {
     return new LighterAccount(this.client, this.resolve(label));
   }
 
+  /** Scope **transferts** unifié (Lighter : vers un autre compte par index). */
+  public transfers(label?: string): LighterTransfers {
+    return new LighterTransfers(this.client, this.resolve(label));
+  }
+
   /** Scope **temps réel** perp. */
   public ws(label?: string): LighterRealtime {
     const resolved = this.resolve(label);
@@ -944,8 +954,6 @@ export class Lighter {
       apiKeys: (label?: string) => new LighterApiKeys(c, r(label)),
       /** Création de sous-comptes — `ISubAccountsAdmin`. */
       subAccounts: (label?: string) => new LighterSubAccounts(c, r(label)),
-      /** Transfert de collatéral entre comptes — `ITransfers`. */
-      transfers: (label?: string) => new LighterTransfers(c, r(label)),
       /** Public pools (LP) — `IPools`. */
       pools: (label?: string) => new LighterPools(c, r(label)),
       /** Stake / unstake d'actifs — `IStaking`. */

@@ -75,21 +75,6 @@ export interface INativeAccount {
   }): ReturnType<typeof getPnl>;
 }
 
-/** Entrée d'un transfert de collatéral entre comptes. */
-export interface Transfer {
-  /** Index du compte destinataire. */
-  toAccountIndex: number;
-  /** Montant en USDC (chaîne décimale, ex. `"10.5"`). */
-  amount: string;
-  /** Mémo (32 bytes / 64 hex). Défaut : zéros. */
-  memo?: string;
-}
-
-/** Transferts de collatéral entre comptes Lighter. */
-export interface ITransfers {
-  transfer(input: Transfer): Promise<TxResult>;
-}
-
 /** Entrée — création d'une public pool. */
 export interface CreatePublicPool {
   operatorFee: number;

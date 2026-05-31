@@ -5,15 +5,18 @@ import { Lighter } from '../src/dex/lighter';
 const dex = new Lighter();
 
 describe('Lighter — façade & lectures publiques (mainnet réel)', () => {
-  it('expose les scopes unifiés + le namespace native (apiKeys/subAccounts/transfers/pools/staking/accountConfig), pas de system', () => {
+  it('expose les scopes unifiés (dont transfers) + le namespace native (apiKeys/subAccounts/pools/staking/accountConfig), pas de system', () => {
     expect(typeof dex.perp).toBe('function');
     expect(typeof dex.spot).toBe('function');
     expect(typeof dex.account).toBe('function');
+    expect(typeof dex.transfers).toBe('function');
     expect(typeof dex.ws).toBe('function');
     expect(typeof dex.wsSpot).toBe('function');
-    for (const c of ['apiKeys', 'subAccounts', 'transfers', 'pools', 'staking', 'accountConfig']) {
+    for (const c of ['apiKeys', 'subAccounts', 'pools', 'staking', 'accountConfig']) {
       expect(typeof (dex.native as Record<string, unknown>)[c]).toBe('function');
     }
+    // `transfers` est COMMUN (top-level), plus dans native.
+    expect((dex.native as Record<string, unknown>).transfers).toBeUndefined();
     // Les anciens scopes top-level ont migré sous `native` (plus de top-level).
     expect((dex as unknown as Record<string, unknown>).apiKeys).toBeUndefined();
     // Lighter n'a pas d'endpoint système (ping/horloge) → pas de scope system().
@@ -61,14 +64,12 @@ describe('Lighter — façade & lectures publiques (mainnet réel)', () => {
   it('perp().getFundingHistory({ name: BTC })', async () => {
     const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
     const now = Date.now();
-    const funding = await dex
-      .perp()
-      .getFundingHistory({
-        name: 'BTC',
-        startTime: fmt(now - 6 * 3600_000),
-        endTime: fmt(now),
-        limit: 3,
-      });
+    const funding = await dex.perp().getFundingHistory({
+      name: 'BTC',
+      startTime: fmt(now - 6 * 3600_000),
+      endTime: fmt(now),
+      limit: 3,
+    });
     expect(funding.length).toBeGreaterThan(0);
     expect(funding[0]?.name).toBe('BTC');
   });
