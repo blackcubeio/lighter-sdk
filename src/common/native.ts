@@ -40,16 +40,19 @@ export interface NativeOrderBookMeta {
   [extra: string]: unknown;
 }
 
-/** Bougie native (`/candlesticks`). `timestamp` en **secondes**, prix/volumes en nombres. */
+/**
+ * Bougie native Lighter (REST `/candles` **et** flux WS `candle`) — clés courtes. `t` = open time
+ * en **millisecondes**, `o/h/l/c` OHLC, `v` volume base, `V` volume quote, `i` dernier trade id.
+ */
 export interface NativeCandlestick {
-  timestamp: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume0: number;
-  volume1: number;
-  last_trade_id?: number;
+  t: number;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v: number;
+  V: number;
+  i?: number;
   [extra: string]: unknown;
 }
 

@@ -25,7 +25,7 @@ describe('Lighter — temps réel via dex.ws() (mainnet réel)', () => {
     expect(Number(book.asks[0]?.price)).toBeGreaterThan(Number(book.bids[0]?.price));
   });
 
-  it('subscribeCandles (le flux WS fonctionne même si le REST candles est filtré)', async () => {
+  it('subscribeCandles (même shape que le REST /candles, converter unifié)', async () => {
     const ws = dex.ws();
     const candle = await first<Candle>((cb) =>
       ws.subscribeCandles({ name: 'BTC', interval: '1m' }, cb),
