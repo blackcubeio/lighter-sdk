@@ -8,12 +8,11 @@
 // juste après `go.run` (boots **sérialisés** pour ne pas se piétiner), et chaque `Sign*` capturé
 // reste une closure liée à SON instance Go (sa mémoire, son registre, son chainId).
 //
-// Node-only (lecture du `.wasm` via `node:fs`) : la signature Lighter se fait côté serveur.
-
-import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// **Node-only** (la libcrypto WASM est lue depuis le disque via `node:fs`) : la signature Lighter se
+// fait côté serveur. Les APIs Node sont chargées **paresseusement** (`loadNodeApis`) au premier boot
+// du signer, **jamais à l'import du module** — ainsi le package reste bundlable en navigateur (les
+// lectures publiques et le WebSocket, eux, sont browser-compatibles, cf. `common/config.ts`) ; seule
+// une tentative de **signature** en navigateur lève alors une erreur explicite.
 
 /** Réponse standardisée d'une fonction `Sign*` du WASM. */
 export interface WasmTx {
@@ -83,24 +82,72 @@ interface GoRuntime {
   run(instance: WebAssembly.Instance): void;
 }
 
+/** APIs Node nécessaires à la lecture du `.wasm` (chargées paresseusement, jamais en navigateur). */
+interface NodeApis {
+  readFileSync: (path: string) => Uint8Array;
+  existsSync: (path: string) => boolean;
+  join: (...parts: string[]) => string;
+  dirname: (path: string) => string;
+  fileURLToPath: (url: string) => string;
+  createRequire: (path: string) => (id: string) => unknown;
+}
+
+let nodeApis: NodeApis | undefined;
+
+/**
+ * Charge paresseusement `node:fs`/`node:path`/`node:url`/`node:module`. Le signer Lighter est
+ * **Node-only** (libcrypto WASM lue depuis le disque) : en navigateur ces modules sont absents et
+ * l'import dynamique échoue → on lève une erreur **explicite** plutôt que de casser le bundling au
+ * load. Les lectures publiques et le WebSocket du SDK restent, eux, utilisables côté navigateur.
+ */
+async function loadNodeApis(): Promise<NodeApis> {
+  if (nodeApis !== undefined) {
+    return nodeApis;
+  }
+  try {
+    const [fs, path, url, mod] = await Promise.all([
+      import('node:fs'),
+      import('node:path'),
+      import('node:url'),
+      import('node:module'),
+    ]);
+    nodeApis = {
+      readFileSync: (p) => fs.readFileSync(p),
+      existsSync: (p) => fs.existsSync(p),
+      join: (...parts) => path.join(...parts),
+      dirname: (p) => path.dirname(p),
+      fileURLToPath: (u) => url.fileURLToPath(u),
+      createRequire: (p) => mod.createRequire(p),
+    };
+    return nodeApis;
+  } catch (cause) {
+    throw new Error(
+      'Signer Lighter indisponible : il est **Node-only** (la libcrypto WASM est lue via `node:fs`, ' +
+        'absent en navigateur). Les lectures publiques et le WebSocket restent utilisables côté ' +
+        'navigateur ; pour signer (ordres, transferts, retraits…), exécutez côté serveur (Node).',
+      { cause },
+    );
+  }
+}
+
 /** Chemin du `.wasm` : surchargeable globalement (sinon résolu près du module / cwd). */
 let wasmDirOverride: string | undefined;
 export function setWasmDir(dir: string): void {
   wasmDirOverride = dir;
 }
 
-function resolveWasmDir(): string {
+function resolveWasmDir(api: NodeApis): string {
   if (wasmDirOverride !== undefined) {
     return wasmDirOverride;
   }
-  const here = dirname(fileURLToPath(import.meta.url));
+  const here = api.dirname(api.fileURLToPath(import.meta.url));
   const candidates = [
-    join(here, '..', 'wasm'), // dist/index.js → ../wasm
-    join(here, '..', '..', 'wasm'), // src/rest/wasm-signer.ts → ../../wasm
-    join(process.cwd(), 'wasm'),
-    join(process.cwd(), 'node_modules', '@blackcube', 'lighter-sdk', 'wasm'),
+    api.join(here, '..', 'wasm'), // dist/index.js → ../wasm
+    api.join(here, '..', '..', 'wasm'), // src/rest/wasm-signer.ts → ../../wasm
+    api.join(process.cwd(), 'wasm'),
+    api.join(process.cwd(), 'node_modules', '@blackcube', 'lighter-sdk', 'wasm'),
   ];
-  const found = candidates.find((dir) => existsSync(join(dir, 'lighter-signer.wasm')));
+  const found = candidates.find((dir) => api.existsSync(api.join(dir, 'lighter-signer.wasm')));
   if (found === undefined) {
     throw new Error(
       `Signer WASM introuvable. Cherché : ${candidates.join(', ')}. Lance \`pnpm build:wasm\` ou passe le chemin via setWasmDir().`,
@@ -624,11 +671,12 @@ export function getWasmInstance(url: string): Promise<WasmInstance> {
 }
 
 async function bootInstance(): Promise<WasmInstance> {
-  const wasmDir = resolveWasmDir();
-  const require = createRequire(import.meta.url);
+  const api = await loadNodeApis();
+  const wasmDir = resolveWasmDir(api);
+  const require = api.createRequire(import.meta.url);
 
   // 1) Charge le runtime Go → globalThis.Go (le module wasm_exec.js est idempotent).
-  const wasmExec = require(join(wasmDir, 'wasm_exec.js'));
+  const wasmExec = require(api.join(wasmDir, 'wasm_exec.js')) as { Go?: new () => GoRuntime };
   if (wasmExec?.Go !== undefined) {
     (globalThis as Record<string, unknown>).Go = wasmExec.Go;
   }
@@ -637,8 +685,10 @@ async function bootInstance(): Promise<WasmInstance> {
     throw new Error('Runtime Go (wasm_exec.js) non chargé');
   }
 
-  // 2) Instancie + exécute (avec le patch d'alias gojs).
-  const bytes = readFileSync(join(wasmDir, 'lighter-signer.wasm'));
+  // 2) Instancie + exécute (avec le patch d'alias gojs). Une panique du runtime Go pendant
+  //    l'instanciation ou `go.run` est **remontée telle quelle** (cause préservée) au lieu d'être
+  //    masquée plus loin par le timeout générique d'attente des globals.
+  const bytes = api.readFileSync(api.join(wasmDir, 'lighter-signer.wasm'));
   const go = new Go();
   const base = go.importObject as Record<string, Record<string, unknown>>;
   const gojs = base.go ?? base.gojs;
@@ -651,18 +701,31 @@ async function bootInstance(): Promise<WasmInstance> {
     }
   }
   const importObject = { ...base, go: gojs, gojs };
-  const { instance } = await WebAssembly.instantiate(
-    bytes as unknown as BufferSource,
-    importObject as unknown as WebAssembly.Imports,
-  );
-  go.run(instance);
+  try {
+    const { instance } = await WebAssembly.instantiate(
+      bytes as unknown as BufferSource,
+      importObject as unknown as WebAssembly.Imports,
+    );
+    go.run(instance);
+  } catch (cause) {
+    throw new Error(
+      `Boot du signer WASM Lighter échoué (instanciation/exécution du runtime Go) : ${
+        cause instanceof Error ? cause.message : String(cause)
+      }`,
+      { cause },
+    );
+  }
 
   // 3) Attend l'enregistrement des globals, puis **capture** les fonctions de CETTE instance.
   const deadline = Date.now() + 5000;
   const scope = globalThis as unknown as Record<string, WasmFn | undefined>;
   while (typeof scope.GenerateAPIKey !== 'function') {
     if (Date.now() > deadline) {
-      throw new Error('Globals du signer WASM non enregistrés après 5 s');
+      throw new Error(
+        'Globals du signer WASM non enregistrés après 5 s : le runtime Go a démarré sans publier ' +
+          'ses fonctions (`.wasm` incompatible/corrompu, ou `wasm_exec.js` non apparié). Relance ' +
+          '`pnpm build:wasm`.',
+      );
     }
     await new Promise((r) => setTimeout(r, 25));
   }

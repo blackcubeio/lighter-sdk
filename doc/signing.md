@@ -60,3 +60,10 @@ Le script `scripts/build-wasm.mjs` clone `github.com/elliottech/lighter-go`, com
 
 Le signer lit le `.wasm` via `node:fs` : il est **Node-only** (la signature se fait côté serveur).
 Le chemin est résolu près du module (`dist/` ou `src/`) ou via `cwd`/`node_modules`.
+
+**Navigateur** : seul le *signer* est Node-only. Les `node:*` sont chargés **paresseusement** au
+premier boot du signer (jamais à l'import du module), donc le package reste **bundlable en
+navigateur** : les **lectures publiques** et le **WebSocket** (`init({ webSocket })`,
+`globalThis.WebSocket` par défaut) fonctionnent côté navigateur. Une tentative de **signature**
+(ordres, transferts, retraits…) en navigateur lève une erreur **explicite** (« Signer Lighter
+indisponible : il est Node-only … ») au lieu d'un échec de bundling opaque.
