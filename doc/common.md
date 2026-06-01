@@ -186,27 +186,16 @@ await dex.system().ping();
 await dex.system().getServerTime();
 ```
 
-## `helpers()` — dérivation de clés
-### `KeyHelper` (+ `EvmHelper` / `SolanaHelper` selon le DEX)
-| `keyTypeOf(pk)` | `string` | `'evm' \| 'solana'` |
-| `privateKeyToAddress(pk)` | `string` | `string` *(EVM)* |
-| `toChecksumAddress(addr)` | `string` | `string` *(EVM)* |
-| `solanaAddress(pk)` | `string` | `string` *(Solana)* |
-| `signEd25519(msg, pk)` | `string, string` | `string` *(Solana)* |
-
-```ts
-dex.helpers().keyTypeOf('0xabc…'); // 'evm'
-```
-
 ---
 
 ## Types — entrées (Input)
 
 ```ts
-interface CandlesParams   { name: string; interval: string; startTime?: number; endTime?: number; limit?: number }
+// startTime/endTime : datetime UTC "YYYY-MM-DD HH:MM:SS" (string).
+interface CandlesParams   { name: string; interval: string; startTime?: string; endTime?: string; limit?: number }
 interface OrderBookParams { name: string; limit?: number }
 interface TradesParams    { name: string; limit?: number }
-interface FundingParams   { name: string; startTime?: number; endTime?: number; limit?: number }
+interface FundingParams   { name: string; startTime?: string; endTime?: string; limit?: number }
 interface SymbolParams    { name: string }
 
 interface PlaceOrderParams {

@@ -78,9 +78,9 @@ dédié, et les lectures de compte (positions, soldes, infos) sont **publiques p
 
 - **Marché** : `getPairs`, `getCandles`, `getOrderBook`, `getPrices`, `getFundingHistory`,
   `getExchangeInfo`, `getTrades`.
-- **Compte du produit** : `getPositions`, `getOpenOrders`, `getUserTrades`, `getAccountInfo`,
-  `getOrderHistory`.
-- **Trading** : `placeOrder` (limit/market), `cancelOrder`, `cancelAllOrders`, `editOrder`,
+- **Compte du produit** : `getPositions`, `getOpens`, `getUserTrades`, `getAccountInfo`,
+  `getHistory`.
+- **Trading** : `place` (limit/market/stop/takeProfit), `cancel`, `cancelAll`, `edit`,
   `updateLeverage`, `setMarginMode`, `addIsolatedMargin`, `removeIsolatedMargin`.
 
 `setMarginMode` n'a pas d'endpoint dédié côté Lighter : la façade le traduit en interne via

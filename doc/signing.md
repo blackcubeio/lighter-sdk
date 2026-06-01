@@ -46,6 +46,27 @@ Les **lectures privées** (ordres actifs, historique, fills) exigent un **token 
 (`CreateAuthToken`), passé en query `auth`. `account` / `positions` / `balances` / `accountsByL1Address`
 sont eux **publics par index**.
 
+## Nonce : écritures concurrentes sérialisées par signer
+
+Lighter expose le **prochain nonce** via `/nextNonce` (lecture) et ne l'incrémente qu'une fois la
+transaction **acceptée** par `/sendTx`. Deux écritures concurrentes du **même signer** liraient donc
+le même nonce et entreraient en collision (l'une rejetée pour nonce déjà utilisé — perte d'ordre en
+argent réel).
+
+Le SDK protège contre ça : la séquence complète **fetch-nonce → sign → send** est **sérialisée par
+signer** (clé `network:apiKeyIndex:accountIndex`, cf. `rest/signer-lock.ts`). Conséquences pour
+l'appelant :
+
+- Plusieurs écritures lancées en parallèle sur le **même signer** (`place`, `cancel`, `withdraw`,
+  `transfer`, `placeBatch`…) sont exécutées **l'une après l'autre**, pas réellement en parallèle.
+- **L'ordre de soumission n'est donc PAS garanti** entre des appels concurrents : `Promise.all([a, b])`
+  peut envoyer `b` avant `a`. Si l'ordre importe (ex. SL avant TP), **enchaîne les `await`** au lieu
+  de les lancer concurremment.
+- Des signers **distincts** ne se bloquent pas (chaînes séparées).
+- La sérialisation est un état de **process** (comme l'instance WASM) : deux process partageant le
+  même signer ne se coordonnent pas — utilise **un signer par process** pour les écritures
+  concurrentes inter-process.
+
 ## Régénérer le binaire
 
 ```sh

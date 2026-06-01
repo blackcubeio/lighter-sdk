@@ -222,25 +222,6 @@ export interface ISystem {
   getServerTime(): Promise<number>;
 }
 
-// ── HELPERS crypto (retournés par helpers()) ──────────────────────────────────
-
-/** Commun aux deux familles de clés. */
-export interface KeyHelper {
-  keyTypeOf(privateKey: string): 'evm' | 'solana';
-}
-
-/** Helpers EVM (Aster, Hyperliquid). */
-export interface EvmHelper {
-  privateKeyToAddress(privateKey: string): string;
-  toChecksumAddress(address: string): string;
-}
-
-/** Helpers Solana / ed25519 (Aster, Pacifica). */
-export interface SolanaHelper {
-  solanaAddress(privateKey: string): string;
-  signEd25519(msg: string, privateKey: string): string;
-}
-
 // ── Capacités TEMPS RÉEL (retournées par ws()) ────────────────────────────────
 // Pas de connect/disconnect : lazy-connect au 1er subscribe, auto-close au dernier unsubscribe.
 
