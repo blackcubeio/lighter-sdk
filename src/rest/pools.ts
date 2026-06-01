@@ -1,25 +1,25 @@
 import type { LighterClient } from '../common/config';
-import { type SendTxResult, sendTx } from './send-tx';
-import { prepareSigner } from './signing';
+import type { SendTxResult } from './send-tx';
+import { signAndSend } from './signing';
 
 /** Crée une public pool (`SignCreatePublicPool`). */
-export async function createPublicPool(
+export function createPublicPool(
   client: LighterClient,
   label: string | undefined,
   params: { operatorFee: number; initialTotalShares: number; minOperatorShareRate: number },
 ): Promise<SendTxResult> {
-  const signer = await prepareSigner(client, label);
-  const tx = signer.wasm.signCreatePublicPool({
-    ...params,
-    nonce: signer.nonce,
-    apiKeyIndex: signer.apiKeyIndex,
-    accountIndex: signer.accountIndex,
-  });
-  return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  return signAndSend(client, label, (signer) =>
+    signer.wasm.signCreatePublicPool({
+      ...params,
+      nonce: signer.nonce,
+      apiKeyIndex: signer.apiKeyIndex,
+      accountIndex: signer.accountIndex,
+    }),
+  );
 }
 
 /** Met à jour une public pool (`SignUpdatePublicPool`). */
-export async function updatePublicPool(
+export function updatePublicPool(
   client: LighterClient,
   label: string | undefined,
   params: {
@@ -29,44 +29,44 @@ export async function updatePublicPool(
     minOperatorShareRate: number;
   },
 ): Promise<SendTxResult> {
-  const signer = await prepareSigner(client, label);
-  const tx = signer.wasm.signUpdatePublicPool({
-    ...params,
-    nonce: signer.nonce,
-    apiKeyIndex: signer.apiKeyIndex,
-    accountIndex: signer.accountIndex,
-  });
-  return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  return signAndSend(client, label, (signer) =>
+    signer.wasm.signUpdatePublicPool({
+      ...params,
+      nonce: signer.nonce,
+      apiKeyIndex: signer.apiKeyIndex,
+      accountIndex: signer.accountIndex,
+    }),
+  );
 }
 
 /** Émet des parts d'une public pool (`SignMintShares`). */
-export async function mintShares(
+export function mintShares(
   client: LighterClient,
   label: string | undefined,
   params: { publicPoolIndex: number; shareAmount: number },
 ): Promise<SendTxResult> {
-  const signer = await prepareSigner(client, label);
-  const tx = signer.wasm.signMintShares({
-    ...params,
-    nonce: signer.nonce,
-    apiKeyIndex: signer.apiKeyIndex,
-    accountIndex: signer.accountIndex,
-  });
-  return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  return signAndSend(client, label, (signer) =>
+    signer.wasm.signMintShares({
+      ...params,
+      nonce: signer.nonce,
+      apiKeyIndex: signer.apiKeyIndex,
+      accountIndex: signer.accountIndex,
+    }),
+  );
 }
 
 /** Brûle des parts d'une public pool (`SignBurnShares`). */
-export async function burnShares(
+export function burnShares(
   client: LighterClient,
   label: string | undefined,
   params: { publicPoolIndex: number; shareAmount: number },
 ): Promise<SendTxResult> {
-  const signer = await prepareSigner(client, label);
-  const tx = signer.wasm.signBurnShares({
-    ...params,
-    nonce: signer.nonce,
-    apiKeyIndex: signer.apiKeyIndex,
-    accountIndex: signer.accountIndex,
-  });
-  return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  return signAndSend(client, label, (signer) =>
+    signer.wasm.signBurnShares({
+      ...params,
+      nonce: signer.nonce,
+      apiKeyIndex: signer.apiKeyIndex,
+      accountIndex: signer.accountIndex,
+    }),
+  );
 }

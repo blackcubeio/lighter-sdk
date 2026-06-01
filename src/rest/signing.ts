@@ -2,7 +2,9 @@ import type { LighterClient } from '../common/config';
 import { CHAIN_ID } from '../common/constants';
 import type { Network, ResolvedSigner } from '../common/types';
 import { getNextNonce } from './get-next-nonce';
-import { type WasmInstance, getWasmInstance } from './wasm-signer';
+import { type SendTxResult, sendTx } from './send-tx';
+import { withSignerLock } from './signer-lock';
+import { type WasmInstance, type WasmTx, getWasmInstance } from './wasm-signer';
 
 /** Résout un signer par label (obligatoire pour toute écriture signée). */
 export function resolveSigner(client: LighterClient, label?: string): ResolvedSigner {
@@ -60,4 +62,24 @@ export async function prepareSigner(
   });
   const nonce = await getNextNonce(client, signer.accountIndex, signer.apiKeyIndex, label);
   return { ...signer, url, chainId, nonce, wasm };
+}
+
+/**
+ * Exécute une écriture signée consommant un nonce : prépare le signer, construit la TX via `build`
+ * (qui reçoit le signer préparé, donc `nonce`/clés/instance WASM), puis l'envoie (`/sendTx`).
+ *
+ * **L'ensemble prepare→sign→send est sérialisé par signer** (cf. {@link withSignerLock}) : sans
+ * cela, deux écritures concurrentes liraient le même `/nextNonce` et entreraient en collision
+ * (nonce déjà utilisé → ordre rejeté). Les signers distincts restent parallèles.
+ */
+export function signAndSend(
+  client: LighterClient,
+  label: string | undefined,
+  build: (signer: PreparedSigner) => WasmTx,
+): Promise<SendTxResult> {
+  return withSignerLock(client, label, async () => {
+    const signer = await prepareSigner(client, label);
+    const tx = build(signer);
+    return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  });
 }

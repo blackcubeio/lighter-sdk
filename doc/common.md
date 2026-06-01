@@ -1,12 +1,20 @@
-# Surface commune (unifiée) — identique sur les 4 SDK Blackcube
+# Surface commune (unifiée) — partagée par les 4 SDK Blackcube
 
 Cette page décrit le **contrat unifié** partagé par `@blackcube/aster-sdk`, `@blackcube/hyperliquid-sdk`,
-`@blackcube/pacifica-sdk` et `@blackcube/lighter-sdk`. **Elle est identique d'un SDK à l'autre** (copiée).
-Le spécifique à chaque DEX est dans [`native.md`](native.md).
+`@blackcube/pacifica-sdk` et `@blackcube/lighter-sdk`. L'**invariant** : mêmes **scopes**, mêmes **noms**,
+même **vocabulaire** et mêmes **formes de types** (`…Params` en entrée, types de sortie communs) d'un SDK à
+l'autre. Deux natures de **divergence assumée par conception**, toujours **annotées au cas par cas** dans les
+tableaux/sections :
 
-> **Ségrégation par capacité** : une méthode/un scope n'existe que si le DEX l'offre réellement
-> (jamais de `throw "non supporté"`). Le tableau de chaque scope indique les absences connues.
+1. **Disponibilité par capacité** — un scope ou une méthode n'existe que si le DEX l'offre réellement
+   (jamais de `throw « non supporté »` ; absences notées `*(absent : …)*`).
+2. **Narrowing de type par DEX** — quand une venue n'accepte qu'une partie d'une entrée, le **type** est
+   restreint à ce qu'elle supporte (le compilateur refuse le reste, aucun `throw` au runtime). Ex. : la/les
+   route(s) de `transfer()`, ou le `type` d'ordre de `place()`. Cf. la section concernée.
+
 > Les prix/quantités sont des **chaînes décimales** ; `xtras` porte le natif hors cœur (rien n'est jeté).
+
+Le spécifique à chaque DEX est dans [`native.md`](native.md).
 
 ## Construction
 
@@ -27,10 +35,10 @@ const dex = new Aster({ desk: signer }, { default: 'desk' });
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `getPairs()` | — | `Promise<Pair[]>` |
-| `getCandles(q)` | `CandlesQuery` | `Promise<Candle[]>` |
-| `getOrderBook(q)` | `OrderBookQuery` | `Promise<OrderBook>` |
+| `getCandles(q)` | `CandlesParams` | `Promise<Candle[]>` |
+| `getOrderBook(q)` | `OrderBookParams` | `Promise<OrderBook>` |
 | `getPrices()` | — | `Promise<Price[]>` |
-| `getFundingHistory(q)` | `FundingQuery` | `Promise<FundingRate[]>` |
+| `getFundingHistory(q)` | `FundingParams` | `Promise<FundingRate[]>` |
 
 ```ts
 await dex.perp().getPairs();
@@ -48,7 +56,7 @@ await dex.perp().getExchangeInfo();
 ```
 
 ### Trades publics — `IPublicTrades`
-| `getTrades(q)` | `TradesQuery` | `Promise<Trade[]>` |
+| `getTrades(q)` | `TradesParams` | `Promise<Trade[]>` |
 
 ```ts
 await dex.perp().getTrades({ name: 'BTC', limit: 50 });
@@ -57,11 +65,11 @@ await dex.perp().getTrades({ name: 'BTC', limit: 50 });
 ### Compte du produit — `IProductAccount` / `IOrderHistory`
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `getPositions(q?)` | `SymbolQuery?` | `Promise<Position[]>` |
-| `getOpens(q?)` | `SymbolQuery?` | `Promise<Order[]>` |
-| `getUserTrades(q?)` | `SymbolQuery?` | `Promise<UserTrade[]>` |
+| `getPositions(q?)` | `SymbolParams?` | `Promise<Position[]>` |
+| `getOpens(q?)` | `SymbolParams?` | `Promise<Order[]>` |
+| `getUserTrades(q?)` | `SymbolParams?` | `Promise<UserTrade[]>` |
 | `getAccountInfo()` | — | `Promise<unknown>` |
-| `getHistory(q?)` | `SymbolQuery?` | `Promise<Order[]>` |
+| `getHistory(q?)` | `SymbolParams?` | `Promise<Order[]>` |
 
 ```ts
 await dex.perp().getPositions();
@@ -74,11 +82,11 @@ await dex.perp().getHistory({ name: 'BTC' });
 ### Trading — `ITrading`
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `place(i)` | `PlaceOrderInput` | `Promise<Order>` |
-| `cancel(i)` | `CancelOrderInput` | `Promise<void>` |
-| `cancelAll(i)` | `CancelAllInput` | `Promise<{ cancelled: number \| null }>` |
-| `edit(i)` | `EditOrderInput` | `Promise<{ name: string; id: string }>` |
-| `updateLeverage(i)` | `LeverageInput` | `Promise<unknown>` |
+| `place(i)` | `PlaceOrderParams` | `Promise<Order>` |
+| `cancel(i)` | `CancelOrderParams` | `Promise<void>` |
+| `cancelAll(i)` | `CancelAllParams` | `Promise<{ cancelled: number \| null }>` |
+| `edit(i)` | `EditOrderParams` | `Promise<{ name: string; id: string }>` |
+| `updateLeverage(i)` | `LeverageParams` | `Promise<unknown>` |
 
 ```ts
 await dex.perp().place({ name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '50000' });
@@ -91,9 +99,9 @@ await dex.perp().updateLeverage({ name: 'BTC', leverage: 10 });
 ### Marge — `IMarginMode` / `IIsolatedMargin` / `IRemovableMargin`
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `setMarginMode(i)` | `MarginModeInput` | `Promise<void>` |
-| `addIsolatedMargin(i)` | `IsolatedMarginInput` | `Promise<void>` |
-| `removeIsolatedMargin(i)` | `IsolatedMarginInput` | `Promise<void>` *(absent : Pacifica)* |
+| `setMarginMode(i)` | `MarginModeParams` | `Promise<void>` |
+| `addIsolatedMargin(i)` | `IsolatedMarginParams` | `Promise<void>` |
+| `removeIsolatedMargin(i)` | `IsolatedMarginParams` | `Promise<void>` *(absent : Pacifica)* |
 
 ```ts
 await dex.perp().setMarginMode({ name: 'BTC', isolated: true });
@@ -108,8 +116,8 @@ await dex.perp().removeIsolatedMargin({ name: 'BTC', amount: '50' });
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `getBalances()` | — | `Promise<Balance[]>` |
-| `withdraw(i)` | `WithdrawInput` | `Promise<unknown>` |
-| `getSubAccounts()` | — | `Promise<SubAccount[]>` *(absent : HL)* |
+| `withdraw(i)` | `WithdrawParams` | `Promise<TxResult>` (hash + enveloppe brute ; `TxResult` défini dans [`native.md`](native.md)) |
+| `getSubAccounts()` | — | `Promise<SubAccount[]>` *(absent du scope commun HL ; HL l'expose via `dex.native.subAccounts().getList()`)* |
 | `armCancelAll(afterMs)` | `number` | `Promise<unknown>` *(absent : Pacifica)* |
 | `disarm()` | — | `Promise<unknown>` *(absent : Pacifica)* |
 
@@ -195,25 +203,25 @@ dex.helpers().keyTypeOf('0xabc…'); // 'evm'
 ## Types — entrées (Input)
 
 ```ts
-interface CandlesQuery   { name: string; interval: string; startTime?: number; endTime?: number; limit?: number }
-interface OrderBookQuery { name: string; limit?: number }
-interface TradesQuery    { name: string; limit?: number }
-interface FundingQuery   { name: string; startTime?: number; endTime?: number; limit?: number }
-interface SymbolQuery    { name: string }
+interface CandlesParams   { name: string; interval: string; startTime?: number; endTime?: number; limit?: number }
+interface OrderBookParams { name: string; limit?: number }
+interface TradesParams    { name: string; limit?: number }
+interface FundingParams   { name: string; startTime?: number; endTime?: number; limit?: number }
+interface SymbolParams    { name: string }
 
-interface PlaceOrderInput {
+interface PlaceOrderParams {
   name: string; side: 'buy' | 'sell';
   type: 'limit' | 'market' | 'stop' | 'stopMarket' | 'takeProfit' | 'takeProfitMarket';
   size: string; price?: string; triggerPrice?: string;
   tif?: 'gtc' | 'ioc' | 'fok' | 'alo'; reduceOnly?: boolean; clientId?: string;
 }
-interface CancelOrderInput   { name: string; id?: string; clientId?: string }
-interface CancelAllInput     { name: string }
-interface EditOrderInput     { name: string; id?: string; clientId?: string; side: 'buy' | 'sell'; size: string; price?: string }
-interface LeverageInput      { name: string; leverage: number }
-interface MarginModeInput    { name: string; isolated: boolean }
-interface IsolatedMarginInput{ name: string; amount: string }
-interface WithdrawInput      { amount: string; address?: string; asset?: string; [extra: string]: unknown }
+interface CancelOrderParams   { name: string; id?: string; clientId?: string }
+interface CancelAllParams     { name: string }
+interface EditOrderParams     { name: string; id?: string; clientId?: string; side: 'buy' | 'sell'; size: string; price?: string }
+interface LeverageParams      { name: string; leverage: number }
+interface MarginModeParams    { name: string; isolated: boolean }
+interface IsolatedMarginParams{ name: string; amount: string }
+interface WithdrawParams      { amount: string; address?: string; asset?: string; [extra: string]: unknown }
 ```
 
 ## Types — sorties (Output)
@@ -256,18 +264,8 @@ interface Balance { asset: string; total: string; available: string | null; usdV
 
 interface SubAccount { address: string; xtras?: Record<string, unknown> }
 
-// Résultat d'une écriture signée (TX `/sendTx`) : hash + enveloppe brute (rien jeté).
-interface TxResult { txHash: string; raw: Record<string, unknown> }
-
-// Interfaces dédiées **nommées** du namespace `native` (pas d'équivalent commun inter-SDK ;
-// champs aux mêmes noms que le cœur). Cf. doc/native.md.
-interface Liquidation { name: string; id: string | null; side: Side | null; size: string | null;
-  price: string | null; fee: string | null; type: string | null; time: number; xtras?: Record<string, unknown> }
-
-interface PositionFundingEntry { name: string; side: 'long' | 'short' | null; size: string | null;
-  fundingRate: string | null; pnl: string | null; time: number; xtras?: Record<string, unknown> }
-
-interface PnlPoint { time: number; pnl: string | null; xtras?: Record<string, unknown> }
-
 type Unsubscribe = () => void;
 ```
+
+> Les types **natifs** (`TxResult`, `Liquidation`, `PositionFundingEntry`, `PnlPoint`…) n'appartiennent
+> pas au commun : ils sont documentés dans [`native.md`](native.md) (namespace `native`).

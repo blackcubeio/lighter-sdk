@@ -70,7 +70,10 @@ describe.skipIf(!ready)('Lighter — trading testnet réel (compte main)', () =>
     });
     console.log('ordre placé:', JSON.stringify(order));
     expect(order.name).toBe('BTC');
-    expect(order.status).toBe('open');
+    // `/sendTx` ne rend qu'un txHash : place() est **honnête** (pas de statut/fill fabriqué).
+    expect(order.status).toBe('other'); // indéterminé, pas un 'open' mensonger
+    expect(order.filled).toBe(''); // inconnu, pas '0'
+    expect(order.xtras?.txHash).toBeDefined();
 
     await new Promise((r) => setTimeout(r, 2000));
     const open = await dex.perp().getOpens({ name: 'BTC' });

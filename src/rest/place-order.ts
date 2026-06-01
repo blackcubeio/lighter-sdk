@@ -1,6 +1,6 @@
 import type { LighterClient } from '../common/config';
-import { type SendTxResult, sendTx } from './send-tx';
-import { prepareSigner } from './signing';
+import type { SendTxResult } from './send-tx';
+import { signAndSend } from './signing';
 
 /** Paramètres **natifs** d'un ordre (entiers scalés par la façade selon les décimales du marché). */
 export interface PlaceOrderNative {
@@ -26,17 +26,17 @@ export interface PlaceOrderNative {
 }
 
 /** Signe et envoie un ordre (`SignCreateOrder` → `/sendTx`). */
-export async function placeOrder(
+export function placeOrder(
   client: LighterClient,
   label: string | undefined,
   order: PlaceOrderNative,
 ): Promise<SendTxResult> {
-  const signer = await prepareSigner(client, label);
-  const tx = signer.wasm.signCreateOrder({
-    ...order,
-    nonce: signer.nonce,
-    apiKeyIndex: signer.apiKeyIndex,
-    accountIndex: signer.accountIndex,
-  });
-  return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  return signAndSend(client, label, (signer) =>
+    signer.wasm.signCreateOrder({
+      ...order,
+      nonce: signer.nonce,
+      apiKeyIndex: signer.apiKeyIndex,
+      accountIndex: signer.accountIndex,
+    }),
+  );
 }

@@ -16,6 +16,8 @@ export interface WsClientOptions {
   webSocket?: WebSocketFactory;
   /** Label du signer : choisit le réseau (défaut mainnet). */
   label?: string;
+  /** Intervalle du heartbeat applicatif (ms). Défaut `30_000` (cf. spec robustesse WS commune). */
+  heartbeatIntervalMs?: number;
 }
 
 // ── ws/unified-client.ts ──

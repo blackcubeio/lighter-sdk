@@ -21,6 +21,36 @@ const asObj = (v: JsonValue | undefined): Obj | undefined =>
 
 const asArr = (v: JsonValue | undefined): JsonValue[] => (Array.isArray(v) ? v : []);
 
+const num = (v: JsonValue | undefined): number => Number(v ?? 0);
+
+/**
+ * Parse un objet WS brut en {@link NativeCandlestick} (clés courtes `t,o,h,l,c,v,V`). Le wire WS a la
+ * **même shape** que le REST `/candles` ; on type proprement au lieu d'un double cast `as unknown as`
+ * (un changement de shape backend doit être attrapé ici, pas avalé silencieusement).
+ */
+const toNativeCandle = (o: Obj): NativeCandlestick => ({
+  ...o,
+  t: num(o.t),
+  o: num(o.o),
+  h: num(o.h),
+  l: num(o.l),
+  c: num(o.c),
+  v: num(o.v),
+  V: num(o.V),
+  i: o.i !== undefined ? num(o.i) : undefined,
+});
+
+/** Parse un objet WS brut en {@link NativeTrade} (mêmes champs que le REST `/trades`). */
+const toNativeTrade = (o: Obj): NativeTrade => ({
+  ...o,
+  market_id: num(o.market_id),
+  size: String(o.size ?? ''),
+  price: String(o.price ?? ''),
+  is_maker_ask: typeof o.is_maker_ask === 'boolean' ? o.is_maker_ask : undefined,
+  timestamp: num(o.timestamp),
+  trade_id: o.trade_id !== undefined ? num(o.trade_id) : undefined,
+});
+
 /** Maintient un carnet local à partir du snapshot + deltas WS Lighter (size `0` = suppression). */
 class BookState {
   private readonly bids = new Map<string, string>();
@@ -70,6 +100,19 @@ export class UnifiedWsClient {
     this.ws = new LighterWsClient(client, options);
   }
 
+  /** Notifié à chaque erreur socket / message illisible (robustesse WS). */
+  public set onError(cb: ((error: unknown) => void) | null) {
+    this.ws.onError = cb;
+  }
+  /** Notifié à chaque fermeture de socket (avant une éventuelle reconnexion). */
+  public set onClose(cb: (() => void) | null) {
+    this.ws.onClose = cb;
+  }
+  /** Notifié après une reconnexion réussie (les abonnements ont été rejoués). */
+  public set onReconnect(cb: (() => void) | null) {
+    this.ws.onReconnect = cb;
+  }
+
   /** Bougies temps réel (`candle/<id>/<resolution>`). Même shape que le REST → même converter. */
   subscribeCandles(
     marketId: number,
@@ -84,7 +127,7 @@ export class UnifiedWsClient {
       for (const raw of asArr(obj?.candles)) {
         const c = asObj(raw);
         if (c !== undefined) {
-          cb(converter.toCommon(c as unknown as NativeCandlestick));
+          cb(converter.toCommon(toNativeCandle(c)));
         }
       }
     });
@@ -148,7 +191,7 @@ export class UnifiedWsClient {
       for (const raw of asArr(obj?.trades)) {
         const t = asObj(raw);
         if (t !== undefined) {
-          cb(converter.toCommon(t as unknown as NativeTrade));
+          cb(converter.toCommon(toNativeTrade(t)));
         }
       }
     });

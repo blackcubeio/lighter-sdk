@@ -1,23 +1,23 @@
 import type { LighterClient } from '../common/config';
 import { CANCEL_ALL_MODE } from '../common/constants';
-import { type SendTxResult, sendTx } from './send-tx';
-import { prepareSigner } from './signing';
+import type { SendTxResult } from './send-tx';
+import { signAndSend } from './signing';
 
-async function signCancelAll(
+function signCancelAll(
   client: LighterClient,
   label: string | undefined,
   mode: number,
   time: number,
 ): Promise<SendTxResult> {
-  const signer = await prepareSigner(client, label);
-  const tx = signer.wasm.signCancelAllOrders({
-    timeInForce: mode, // 1er arg natif = mode CancelAll (immediate/scheduled/abort)
-    time,
-    nonce: signer.nonce,
-    apiKeyIndex: signer.apiKeyIndex,
-    accountIndex: signer.accountIndex,
-  });
-  return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  return signAndSend(client, label, (signer) =>
+    signer.wasm.signCancelAllOrders({
+      timeInForce: mode, // 1er arg natif = mode CancelAll (immediate/scheduled/abort)
+      time,
+      nonce: signer.nonce,
+      apiKeyIndex: signer.apiKeyIndex,
+      accountIndex: signer.accountIndex,
+    }),
+  );
 }
 
 /** Annule **immédiatement** tous les ordres du compte (`SignCancelAllOrders`, mode immédiat). */

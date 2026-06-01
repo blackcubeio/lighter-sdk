@@ -9,6 +9,7 @@ import type {
   Price,
   SubAccount,
   Trade,
+  TxResult,
   UserTrade,
 } from '../common/types';
 import type { Unsubscribe } from '../common/ws';
@@ -109,6 +110,7 @@ export interface IMarketData {
 
 /** Métadonnées de marché du produit (infos d'échange, symboles…). */
 export interface IMarketMeta {
+  /** Brut volontaire — passe-plat de la réponse native ; pas de forme commune cross-DEX. */
   getExchangeInfo(): Promise<unknown>;
 }
 
@@ -119,9 +121,21 @@ export interface IPublicTrades {
 
 /** Placement/annulation/édition d'ordres + levier (les 3 DEX). */
 export interface ITrading {
+  /**
+   * Place un ordre et renvoie un {@link Order}. **Asymétrie volontaire avec `edit`** : `place` rend
+   * l'objet `Order` (cœur unifié) car un nouvel ordre porte une identité métier complète ; selon la
+   * venue, certains champs peuvent être indéterminés au moment de l'ack (Lighter `/sendTx` ne rend
+   * qu'un `txHash` → `status: 'other'`, `filled: ''`, `txHash` en `xtras` ; lire ensuite pour l'état réel).
+   */
   place(input: PlaceOrderParams): Promise<Order>;
   cancel(input: CancelOrderParams): Promise<void>;
   cancelAll(input: CancelAllParams): Promise<{ cancelled: number | null }>;
+  /**
+   * Modifie un ordre et renvoie seulement `{ name, id }` (pas un `Order` complet). **Asymétrie
+   * volontaire avec `place`** : une édition ne recrée pas d'identité métier et l'ack ne fournit pas
+   * un état d'ordre fiable cross-DEX (Lighter : `id` = `txHash` de la modification) ; on n'invente
+   * donc aucun champ — lire l'ordre pour son état réel.
+   */
   edit(input: EditOrderParams): Promise<{ name: string; id: string }>;
   updateLeverage(input: LeverageParams): Promise<unknown>;
 }
@@ -148,6 +162,7 @@ export interface IProductAccount {
   getPositions(query?: SymbolParams): Promise<Position[]>;
   getOpens(query?: SymbolParams): Promise<Order[]>;
   getUserTrades(query?: SymbolParams): Promise<UserTrade[]>;
+  /** Brut volontaire — passe-plat de la réponse native ; pas de forme commune cross-DEX. */
   getAccountInfo(): Promise<unknown>;
 }
 
@@ -161,7 +176,8 @@ export interface IOrderHistory {
 /** Compte transverse (sans notion de produit) : soldes + retrait (les 3 DEX). */
 export interface IAccount {
   getBalances(): Promise<Balance[]>;
-  withdraw(input: WithdrawParams): Promise<unknown>;
+  /** Retrait signé → {@link TxResult} (hash + enveloppe brute). Forme commune : résultat de TX. */
+  withdraw(input: WithdrawParams): Promise<TxResult>;
 }
 
 /** Liste des sous-comptes (Aster, Pacifica — pas HL). */

@@ -1,35 +1,35 @@
 import type { LighterClient } from '../common/config';
-import { type SendTxResult, sendTx } from './send-tx';
-import { prepareSigner } from './signing';
+import type { SendTxResult } from './send-tx';
+import { signAndSend } from './signing';
 
 /** Stake des actifs dans une staking pool (`SignStakeAssets`). */
-export async function stakeAssets(
+export function stakeAssets(
   client: LighterClient,
   label: string | undefined,
   params: { stakingPoolIndex: number; shareAmount: number },
 ): Promise<SendTxResult> {
-  const signer = await prepareSigner(client, label);
-  const tx = signer.wasm.signStakeAssets({
-    ...params,
-    nonce: signer.nonce,
-    apiKeyIndex: signer.apiKeyIndex,
-    accountIndex: signer.accountIndex,
-  });
-  return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  return signAndSend(client, label, (signer) =>
+    signer.wasm.signStakeAssets({
+      ...params,
+      nonce: signer.nonce,
+      apiKeyIndex: signer.apiKeyIndex,
+      accountIndex: signer.accountIndex,
+    }),
+  );
 }
 
 /** Retire des actifs stakés (`SignUnstakeAssets`). */
-export async function unstakeAssets(
+export function unstakeAssets(
   client: LighterClient,
   label: string | undefined,
   params: { stakingPoolIndex: number; shareAmount: number },
 ): Promise<SendTxResult> {
-  const signer = await prepareSigner(client, label);
-  const tx = signer.wasm.signUnstakeAssets({
-    ...params,
-    nonce: signer.nonce,
-    apiKeyIndex: signer.apiKeyIndex,
-    accountIndex: signer.accountIndex,
-  });
-  return sendTx(client, tx, signer.accountIndex, signer.apiKeyIndex, signer.network);
+  return signAndSend(client, label, (signer) =>
+    signer.wasm.signUnstakeAssets({
+      ...params,
+      nonce: signer.nonce,
+      apiKeyIndex: signer.apiKeyIndex,
+      accountIndex: signer.accountIndex,
+    }),
+  );
 }

@@ -17,6 +17,7 @@ import type {
   Signer,
   SubAccount,
   Trade,
+  TxResult,
   UserTrade,
 } from '../common/types';
 import { dateToMs, scaleToInt } from '../common/utils';
@@ -414,20 +415,27 @@ class LighterMarket
         input.triggerPrice !== undefined ? scaleToInt(input.triggerPrice, meta.priceDecimals) : 0,
       orderExpiry: tif === TIF.ioc ? 0 : -1,
     });
+    // **Contrainte argent-réel** : `/sendTx` ne renvoie qu'un `txHash` — ni l'`id` d'ordre exchange,
+    // ni le `status` réel, ni la quantité `filled` ne sont connus de façon **synchrone**. On ne
+    // fabrique donc AUCUN statut/fill : `status: 'other'` (= indéterminé, pas un `'open'` mensonger
+    // qui affirmerait que l'ordre repose au carnet), `filled: ''` (= inconnu, distinct de `'0'` qui
+    // affirmerait zéro exécution), `id: ''` (le `txHash` n'est PAS un id d'ordre — il est en xtras).
+    // L'écho de l'input (name/side/type/price/size/tif/reduceOnly) reflète ce qui a été **soumis**.
+    // Pour l'état réel, lire ensuite l'ordre/les positions (REST `getOpens`/`getUserTrades` ou WS).
     return {
       name: input.name,
       kind: this.kind,
-      id: input.clientId ?? '',
+      id: '',
       clientId: input.clientId ?? null,
       side: input.side,
       type: input.type,
       price: input.price,
       size: input.size,
-      filled: '0',
-      status: 'open',
+      filled: '',
+      status: 'other',
       tif: input.tif ?? null,
       reduceOnly: input.reduceOnly ?? null,
-      time: 0,
+      time: Date.now(),
       xtras: { txHash: result.txHash },
     };
   }
@@ -542,7 +550,7 @@ class LighterAccount implements IAccount, ISubAccounts, IDeadManSwitch {
     }
     return getSubAccounts(this.client, signer.l1Address, this.label);
   }
-  public withdraw(input: WithdrawParams): Promise<unknown> {
+  public withdraw(input: WithdrawParams): Promise<TxResult> {
     return withdraw(this.client, this.signed(), { amount: scaleToInt(input.amount, 6) });
   }
 
