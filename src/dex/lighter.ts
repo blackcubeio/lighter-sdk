@@ -76,7 +76,6 @@ import type {
   IProductAccount,
   IPublicTrades,
   IRealtime,
-  IRealtimeAllCandles,
   IRealtimePositions,
   IRemovableMargin,
   ISubAccounts,
@@ -568,7 +567,7 @@ class LighterAccount implements IAccount, ISubAccounts, IDeadManSwitch {
  * Scope **temps réel** lié à un `label`. Lighter a un flux de positions (`account_all`) →
  * implémente `IRealtimePositions`. Les abonnements résolvent `name → market_id` en différé.
  */
-class LighterRealtime implements IRealtime, IRealtimePositions, IRealtimeAllCandles {
+class LighterRealtime implements IRealtime, IRealtimePositions {
   constructor(
     private readonly ws: UnifiedWsClient,
     private readonly client: LighterClient,
