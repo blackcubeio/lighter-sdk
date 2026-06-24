@@ -37,13 +37,7 @@
     }
   },
   "sideEffects": false,
-  "files": [
-    "dist",
-    "doc",
-    "wasm",
-    "README.md",
-    "LICENSE"
-  ],
+  "files": ["dist", "doc", "wasm", "README.md", "LICENSE"],
   "engines": {
     "node": ">=22"
   },
