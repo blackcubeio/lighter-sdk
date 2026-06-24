@@ -119,6 +119,27 @@ export interface IPublicTrades {
   getTrades(query: TradesParams): Promise<Trade[]>;
 }
 
+/** Un take-profit partiel d'une protection (déclenchement + taille ; `price` = borne d'exécution). */
+export interface ProtectionTp {
+  triggerPrice: string;
+  size: string;
+  /** Prix limite/borne de l'ordre déclenché (HL l'exige ; Aster l'ignore — conditionnel market). */
+  price?: string;
+}
+
+/**
+ * Entrée `placeProtection` : SL plein + N TPs partiels (reduce-only) sur une position EXISTANTE.
+ * `side` = sens de la POSITION (les ordres sont posés au sens OPPOSÉ). Tailles + `price` (borne)
+ * fournis par l'appelant — pas de recalcul interne (anti-résidu garanti côté appelant).
+ */
+export interface PlaceProtectionParams {
+  name: string;
+  side: 'buy' | 'sell';
+  sl: { triggerPrice: string; size: string; price?: string };
+  tps: ProtectionTp[];
+  clientId?: string;
+}
+
 /** Placement/annulation/édition d'ordres + levier (les 3 DEX). */
 export interface ITrading {
   /**
@@ -130,6 +151,12 @@ export interface ITrading {
   place(input: PlaceOrderParams): Promise<Order>;
   cancel(input: CancelOrderParams): Promise<void>;
   cancelAll(input: CancelAllParams): Promise<{ cancelled: number | null }>;
+  /**
+   * Pose SL + N TPs (reduce-only) sur une position EXISTANTE, en un lot. Mécanisme natif par DEX.
+   */
+  placeProtection(input: PlaceProtectionParams): Promise<Order[]>;
+  /** Annule la protection (SL/TPs reduce-only) de la paire — à appeler avant de la re-poser. */
+  cancelProtection(input: { name: string }): Promise<void>;
   /**
    * Modifie un ordre et renvoie seulement `{ name, id }` (pas un `Order` complet). **Asymétrie
    * volontaire avec `place`** : une édition ne recrée pas d'identité métier et l'ack ne fournit pas

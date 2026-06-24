@@ -86,6 +86,8 @@ import type {
   MarginModeParams,
   OrderBookParams,
   PlaceOrderParams,
+  PlaceProtectionParams,
+  ProtectionTp,
   SymbolParams,
   TradesParams,
   TransferParams,
@@ -448,6 +450,42 @@ class LighterMarket
     // Lighter annule au niveau **compte** (pas par marché) ; il ne renvoie pas de compteur.
     await cancelAllOrders(this.client, this.signed());
     return { cancelled: null };
+  }
+  // Protection d'une position : SL plein + N TPs partiels, tous reduce-only, via N `place()`
+  // (Lighter : conditionnels natifs `stopLoss`/`takeProfit` au sens OPPOSÉ à la position). `place`
+  // exige un prix (borne) en market → on passe `leg.price ?? leg.triggerPrice`. Tailles fournies
+  // par l'appelant (pas de recalcul). SL = `stopMarket`, TP = `takeProfitMarket`.
+  public placeProtection(input: PlaceProtectionParams): Promise<Order[]> {
+    const exit: 'buy' | 'sell' = input.side === 'buy' ? 'sell' : 'buy';
+    const legs: PlaceOrderParams[] = [
+      {
+        name: input.name,
+        side: exit,
+        type: 'stopMarket',
+        triggerPrice: input.sl.triggerPrice,
+        price: input.sl.price ?? input.sl.triggerPrice,
+        size: input.sl.size,
+        reduceOnly: true,
+        clientId: input.clientId,
+      },
+      ...input.tps.map(
+        (tp: ProtectionTp): PlaceOrderParams => ({
+          name: input.name,
+          side: exit,
+          type: 'takeProfitMarket',
+          triggerPrice: tp.triggerPrice,
+          price: tp.price ?? tp.triggerPrice,
+          size: tp.size,
+          reduceOnly: true,
+        }),
+      ),
+    ];
+    return Promise.all(legs.map((leg) => this.place(leg)));
+  }
+  // Annule toute la protection de la paire (conditionnels reduce-only) avant de la re-poser.
+  // Lighter annule au niveau compte (pas par marché) → cancelAll couvre aussi les conditionnels.
+  public cancelProtection(input: { name: string }): Promise<void> {
+    return this.cancelAll({ name: input.name }).then(() => undefined);
   }
   public async edit(input: EditOrderParams): Promise<{ name: string; id: string }> {
     if (input.price === undefined) {
