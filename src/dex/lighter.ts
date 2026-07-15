@@ -482,6 +482,39 @@ class LighterMarket
     ];
     return Promise.all(legs.map((leg) => this.place(leg)));
   }
+  // Ouvre une position AVEC sa protection : l'entrée en tête, puis SL plein + N TPs reduce-only (Lighter n'a pas
+  // de lot atomique → legs successifs via `place`). `protection.side` = sens de la POSITION → protection au sens
+  // OPPOSÉ ; l'entrée porte son sens propre.
+  public createEntryWithProtection(
+    entry: PlaceOrderParams,
+    protection: PlaceProtectionParams,
+  ): Promise<Order[]> {
+    const exit: 'buy' | 'sell' = protection.side === 'buy' ? 'sell' : 'buy';
+    const legs: PlaceOrderParams[] = [
+      entry,
+      {
+        name: protection.name,
+        side: exit,
+        type: 'stopMarket',
+        triggerPrice: protection.sl.triggerPrice,
+        price: protection.sl.price ?? protection.sl.triggerPrice,
+        size: protection.sl.size,
+        reduceOnly: true,
+      },
+      ...protection.tps.map(
+        (tp: ProtectionTp): PlaceOrderParams => ({
+          name: protection.name,
+          side: exit,
+          type: 'takeProfitMarket',
+          triggerPrice: tp.triggerPrice,
+          price: tp.price ?? tp.triggerPrice,
+          size: tp.size,
+          reduceOnly: true,
+        }),
+      ),
+    ];
+    return Promise.all(legs.map((leg) => this.place(leg)));
+  }
   // Annule toute la protection de la paire (conditionnels reduce-only) avant de la re-poser.
   // Lighter annule au niveau compte (pas par marché) → cancelAll couvre aussi les conditionnels.
   public cancelProtection(input: { name: string }): Promise<void> {
