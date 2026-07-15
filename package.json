@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/lighter-sdk",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "TypeScript SDK for the Lighter exchange (perpetuals orderbook DEX, zk-rollup): REST, WebSocket, official WASM signer",
   "license": "BSD-3-Clause",
   "author": "Blackcube (https://blackcube.io)",
